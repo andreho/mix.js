@@ -1,0 +1,21 @@
+{
+	"_alias_": "Mix",
+	"version": "0.0.1",
+	"homepage": "https://github.com/andreho/",
+	"authors": [
+		"andreho <gumengangler@gmail.com>"
+	],
+	"description": "A try to create a MVVM Framework (pilot project)",
+	"main": "css/main.css",
+	"moduleType": [
+		"globals"
+	],
+	"keywords": [
+		"foo", "bar"
+	],
+	"ignore": [
+		".*", "grunt", "gruntfile.js", "*.json", "*.md"
+	],
+	"license": "MIT",
+	"private": true
+}
