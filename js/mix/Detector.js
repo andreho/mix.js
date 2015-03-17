@@ -4,7 +4,13 @@
 mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 {
 	"use strict";
-	var ua = window.navigator.userAgent, ie = /(MSIE )|(Trident\/7\.\d+)|(Edge\/\d+\.\d+)/.test(ua) || /*@cc_on!@*/false || !!window.document.documentMode, firefox = !ie && /Firefox\/\d+(\.\d+)?/.test(ua) || typeof window.InstallTrigger !== 'undefined', opera = !ie && !firefox && /(Opera[\/ ])|( OPR\/)|(Presto)/gm.test(ua) || !!window.opera || (window.chrome && window.chrome.webstore === undefined), chrome = !ie && !firefox && !opera && !!window.chrome, safari = !ie && !chrome && !firefox && !opera && Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0, mobile = ua.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
+	var ua = window.navigator.userAgent;
+	var ie = /(MSIE )|(Trident\/7\.\d+)|(Edge\/\d+\.\d+)/.test(ua) || /*@cc_on!@*/false || !!window.document.documentMode;
+	var firefox = !ie && /Firefox\/\d+(\.\d+)?/.test(ua) || typeof window.InstallTrigger !== 'undefined';
+	var opera = !ie && !firefox && /(Opera[\/ ])|( OPR\/)|(Presto)/gm.test(ua) || !!window.opera || (window.chrome && window.chrome.webstore === undefined);
+	var chrome = !ie && !firefox && !opera && !!window.chrome;
+	var safari = !ie && !chrome && !firefox && !opera && Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+	var mobile = ua.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
 
 	function has(feature)
 	{
@@ -24,25 +30,25 @@ mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 			{
 				if(ie)
 				{
-					return "IE";
+					return "ie";
 				}
 				if(firefox)
 				{
-					return "FIREFOX";
+					return "firefox";
 				}
 				if(opera)
 				{
-					return "OPERA";
+					return "opera";
 				}
 				if(chrome)
 				{
-					return "CHROME";
+					return "chrome";
 				}
 				if(safari)
 				{
-					return "SAFARI";
+					return "safari";
 				}
-				return "UNDEFINED";
+				return "undefined";
 			})(),
 			version: (function()
 			{
@@ -50,29 +56,29 @@ mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 				{
 					if(ua.indexOf("MSIE ") > -1)
 					{
-						return ua.replace(/MSIE (\d+(\.\d+)?)/, "$1");
+						return ua.replace(/MSIE (\d+(?:\.\d+)*)/, "$1");
 					}
 					else if(ua.indexOf("Edge/") > -1)
 					{
-						return ua.replace(/Edge\/(\d+\.\d+)/, "$1");
+						return ua.replace(/Edge\/(\d+(?:\.\d+)*)/, "$1");
 					}
-					return ua.replace(/Trident\/.*rv:\s*(\d+\.d+)/, "$1");
+					return ua.replace(/Trident\/.*rv:\s*(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(firefox)
 				{
-					return ua.replace(/Firefox\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Firefox\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(opera)
 				{
-					return ua.indexOf("Opera") > -1 ? ua.replace(/Opera[\/ ](\d+(\.\d+)?)/, "$1") : ua.replace(/(OPR)\/(\d+(\.\d+)?)/, "$1");
+					return ua.indexOf("Opera") > -1 ? ua.replace(/Opera[\/ ](\d+(?:\.\d+)*)/, "$1") : ua.replace(/(OPR)\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(chrome)
 				{
-					return ua.replace(/Chrome\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Chrome\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(safari)
 				{
-					return ua.replace(/Safari\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Safari\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				return "";
 			})()
