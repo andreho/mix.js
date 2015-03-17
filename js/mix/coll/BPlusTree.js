@@ -1,6 +1,6 @@
 /**
  * Reworked version of B+ Tree of Graham O'Neill
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  * <br/>
  B+ Tree processing
  Version 1.0.3

@@ -1,5 +1,5 @@
 /**
- * Created by Big on 10.03.2015.
+ * Created by A.Hofmann on 10.03.2015.
  */
 mix.declare("mix.Promise", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {

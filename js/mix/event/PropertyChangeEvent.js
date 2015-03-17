@@ -1,5 +1,5 @@
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.event.PropertyChangeEvent", ["mix.event.Event"], function(Event)
 {

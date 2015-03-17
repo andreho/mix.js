@@ -1,5 +1,5 @@
 /**
- * Created by Big on 21.02.2015.
+ * Created by A.Hofmann on 21.02.2015.
  */
 mix.extend("mix.Utils", ["mix.coll.SortedMap"], function(Utils, SortedMap)
 {

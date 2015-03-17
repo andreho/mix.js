@@ -1,5 +1,5 @@
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.model.Property", ["mix.Symbols", "mix.Utils", "mix.Constants", "mix.event.PropertyChangeEvent"], function(Symbols, Utils, Constants, PropertyChangeEvent)
 {

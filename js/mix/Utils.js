@@ -1,5 +1,5 @@
 /**
- * Created by Big on 23.02.2015.
+ * Created by A.Hofmann on 23.02.2015.
  */
 mix.declare("mix.Utils", ["mix.Constants"], function(Constants)
 {

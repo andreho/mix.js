@@ -1,3 +1,3 @@
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */

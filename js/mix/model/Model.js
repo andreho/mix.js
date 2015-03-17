@@ -1,5 +1,5 @@
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.model.Model", ["mix.model.Config", "mix.event.Dispatcher", "mix.Utils", "mix.Constants", "mix.Detector", "mix.model.Property"], function(ModelConfig, Dispatcher, Utils, Constants, Detector, Property)
 {

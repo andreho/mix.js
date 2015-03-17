@@ -763,11 +763,9 @@ window._mix_ = (window._mix_ || "_mix_");
 	//------------------------------------------------------------------------------------------------------
 })(window, _mix_, "mix");
 //-----------------------------------------------------------------------------------------------------------------------
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.Arrays", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
@@ -779,33 +777,27 @@ mix.declare("mix.Arrays", ["mix.Utils", "mix.Detector", "mix.Constants"], functi
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Arrays;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.Assert", ["mix.Utils", "mix.Constants"], function(Utils, Constants)
 {
 	"use strict";
 	return null;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.Console", ["mix.Utils", "mix.Constants"], function(Utils, Constants)
 {
 	"use strict";
 	return window.console;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 04.03.2015.
+ * Created by A.Hofmann on 04.03.2015.
  */
 mix.declare("mix.Constants", function()
 {
@@ -831,11 +823,9 @@ mix.declare("mix.Constants", function()
 		STOP: STOP
 	};
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 04.03.2015.
+ * Created by A.Hofmann on 04.03.2015.
  */
 mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 {
@@ -957,11 +947,9 @@ mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 	};
 	return detected;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.Objects", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
@@ -973,22 +961,18 @@ mix.declare("mix.Objects", ["mix.Utils", "mix.Detector", "mix.Constants"], funct
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Objects;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 11.03.2015.
+ * Created by A.Hofmann on 11.03.2015.
  */
 mix.declare("mix.Polyfill", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
 	"use strict";
 	return null;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 10.03.2015.
+ * Created by A.Hofmann on 10.03.2015.
  */
 mix.declare("mix.Promise", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {
@@ -1305,11 +1289,9 @@ mix.declare("mix.Promise", ["mix.Utils", "mix.Detector"], function(Utils, Detect
 	};
 	return Promise;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 16.03.2015.
+ * Created by A.Hofmann on 16.03.2015.
  */
 mix.declare("mix.Symbols", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {
@@ -1385,11 +1367,9 @@ mix.declare("mix.Symbols", ["mix.Utils", "mix.Detector"], function(Utils, Detect
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Symbols;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 23.02.2015.
+ * Created by A.Hofmann on 23.02.2015.
  */
 mix.declare("mix.Utils", ["mix.Constants"], function(Constants)
 {
@@ -2158,12 +2138,10 @@ mix.declare("mix.Utils", ["mix.Constants"], function(Constants)
 	})();
 	return Utils;
 });
-
 //######################################################################################
-
 /**
  * Reworked version of B+ Tree of Graham O'Neill
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  * <br/>
  B+ Tree processing
  Version 1.0.3
@@ -2939,11 +2917,7 @@ mix.declare("mix.coll.BPlusTree", function()
 	}
 	return BPlusTree;
 });
-
-
-
 //######################################################################################
-
 mix.declare("mix.coll.HashMap", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {
 	var E;
@@ -3247,9 +3221,7 @@ mix.declare("mix.coll.HashMap", ["mix.Utils", "mix.Detector"], function(Utils, D
 	});
 	return HashMap;
 });
-
 //######################################################################################
-
 mix.declare("mix.coll.MultiMap", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
 	"use strict";
@@ -3478,9 +3450,7 @@ mix.declare("mix.coll.MultiMap", ["mix.Utils", "mix.Detector", "mix.Constants"],
 	});
 	return MultiMap;
 });
-
 //######################################################################################
-
 mix.declare("mix.coll.SimpleMap", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {
 	"use strict";
@@ -3663,9 +3633,7 @@ mix.declare("mix.coll.SimpleMap", ["mix.Utils", "mix.Detector"], function(Utils,
 	});
 	return SimpleMap;
 });
-
 //######################################################################################
-
 mix.declare("mix.coll.SortedMap", ["mix.Utils", "mix.Detector"], function(Utils, Detector)
 {
 	"use strict";
@@ -3880,11 +3848,9 @@ mix.declare("mix.coll.SortedMap", ["mix.Utils", "mix.Detector"], function(Utils,
 	});
 	return SortedMap;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 16.03.2015.
+ * Created by A.Hofmann on 16.03.2015.
  */
 mix.declare("mix.event.Config", ["mix.Utils", "mix.Constants", "mix.Symbols"], function(Utils, Constants, Symbols)
 {
@@ -3916,11 +3882,9 @@ mix.declare("mix.event.Config", ["mix.Utils", "mix.Constants", "mix.Symbols"], f
 		listenersSetup: applyListeners
 	}
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.event.Dispatcher", ["mix.Utils", "mix.Detector", "mix.Constants", "mix.event.Config"], function(Utils, Detector, Constants, DispatcherConfig)
 {
@@ -4048,11 +4012,9 @@ mix.declare("mix.event.Dispatcher", ["mix.Utils", "mix.Detector", "mix.Constants
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Dispatcher;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.event.Event", function()
 {
@@ -4072,12 +4034,9 @@ mix.declare("mix.event.Event", function()
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Event;
 });
-
-
 //######################################################################################
-
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.event.PropertyChangeEvent", ["mix.event.Event"], function(Event)
 {
@@ -4096,22 +4055,18 @@ mix.declare("mix.event.PropertyChangeEvent", ["mix.event.Event"], function(Event
 	//-----------------------------------------------------------------------------------------------------------------------
 	return PropertyChangeEvent;
 });
-
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.model.Config", ["mix.Utils", "mix.Constants", "mix.Symbols"], function(Utils, Constants, Symbols)
 {
@@ -4143,32 +4098,27 @@ mix.declare("mix.model.Config", ["mix.Utils", "mix.Constants", "mix.Symbols"], f
 		dispatcherSetup: applyDispatcher
 	}
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.model.Model", ["mix.model.Config", "mix.event.Dispatcher", "mix.Utils", "mix.Constants", "mix.Detector", "mix.model.Property"], function(ModelConfig, Dispatcher, Utils, Constants, Detector, Property)
 {
@@ -4272,11 +4222,9 @@ mix.declare("mix.model.Model", ["mix.model.Config", "mix.event.Dispatcher", "mix
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Model;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.model.Property", ["mix.Symbols", "mix.Utils", "mix.Constants", "mix.event.PropertyChangeEvent"], function(Symbols, Utils, Constants, PropertyChangeEvent)
 {
@@ -4805,25 +4753,21 @@ mix.declare("mix.model.Property", ["mix.Symbols", "mix.Utils", "mix.Constants", 
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Property;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 13.03.2015.
+ * Created by A.Hofmann on 13.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 13.03.2015.
+ * Created by A.Hofmann on 13.03.2015.
  */
 mix.declare("mix.net.Request", ["mix.Utils", "mix.Detector", "mix.Promise"], function(Utils, Detector, Promise)
 {
@@ -4841,11 +4785,9 @@ mix.declare("mix.net.Request", ["mix.Utils", "mix.Detector", "mix.Promise"], fun
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Request;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 13.03.2015.
+ * Created by A.Hofmann on 13.03.2015.
  */
 mix.declare("mix.net.URL", ["mix.Utils"], function(Utils)
 {
@@ -5149,11 +5091,9 @@ mix.declare("mix.net.URL", ["mix.Utils"], function(Utils)
 	//-----------------------------------------------------------------------------------------------------------------------
 	return URL;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.orm.Session", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
@@ -5166,11 +5106,9 @@ mix.declare("mix.orm.Session", ["mix.Utils", "mix.Detector", "mix.Constants"], f
 	//-----------------------------------------------------------------------------------------------------------------------
 	return Session;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 mix.declare("mix.orm.SessionFactory", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
 {
@@ -5183,53 +5121,45 @@ mix.declare("mix.orm.SessionFactory", ["mix.Utils", "mix.Detector", "mix.Constan
 	//-----------------------------------------------------------------------------------------------------------------------
 	return SessionFactory;
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 16.03.2015.
+ * Created by A.Hofmann on 16.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 13.03.2015.
+ * Created by A.Hofmann on 13.03.2015.
  */
 
 
 //######################################################################################
-
 /**
- * Created by Big on 21.02.2015.
+ * Created by A.Hofmann on 21.02.2015.
  */
 mix.config("mix.core", {
 	baseUrl: "/Example/Mx",
@@ -5305,11 +5235,9 @@ _mix_.resource().alias("test_lib").type("library").requires("jQuery", "test_lib2
 	"use strict";
 	return "bla2";
 });
-
 //######################################################################################
-
 /**
- * Created by Big on 21.02.2015.
+ * Created by A.Hofmann on 21.02.2015.
  */
 mix.extend("mix.Utils", ["mix.coll.SortedMap"], function(Utils, SortedMap)
 {

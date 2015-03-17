@@ -1,8 +1,8 @@
 /**
- * Created by Big on 15.03.2015.
+ * Created by A.Hofmann on 15.03.2015.
  */
 /**
- * Created by Big on 06.03.2015.
+ * Created by A.Hofmann on 06.03.2015.
  */
 mix.declare("mix.model.Config", ["mix.Utils", "mix.Constants", "mix.Symbols"], function(Utils, Constants, Symbols)
 {
