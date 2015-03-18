@@ -26,16 +26,30 @@ mix.declare("mix.Parser", ["mix.Utils"], function(Utils)
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------
-	Parser.prototype.toXml = (function()
+	function Node()
+	{
+		this.parent = null;
+		this.ns = "";
+		this.type = 0;
+		this.prefix = "";
+		this.name = ""
+		this.before = "";
+		this.after = "";
+		this.children = [];
+		this.attributes = {}
+	}
+
+	//-----------------------------------------------------------------------------------------------------------------------
+	Parser.parseXML = (function()
 	{
 		if(Utils.isFunction(window.DOMParser))
 		{
-			return function toXml(str)
+			return function toXML(str)
 			{
 				return new DOMParser().parseFromString(str, "application/xml");
 			}
 		}
-		return function toXml(str)
+		return function toXML(str)
 		{
 			var xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
 			xmlDoc.async = false;
