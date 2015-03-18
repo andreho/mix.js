@@ -1,31 +1,38 @@
 /**
  * Created by A.Hofmann on 17.03.2015 at 23:33.
  */
-mix.declare("mix.xml.XmlParser", ["mix.Utils", "mix.Detector", "mix.Constants"], function(Utils, Detector, Constants)
+mix.declare("mix.Parser", ["mix.Utils"], function(Utils)
 {
 	"use strict";
-	function XmlParser(xml, resultType)
+	function Parser(xml, resultType)
 	{
-		if(!(this instanceof XmlParser))
+		if(!(this instanceof Parser))
 		{
-			return new XmlParser(xml);
+			return new Parser(xml);
 		}
-		this.resultType = resultType || XmlParser.XML;
+		this.resultType = resultType || Parser.XML;
 		this.result = null;
 		if(Utils.isString(xml))
 		{
-			this.parse(xml);
+			switch(this.resultType)
+			{
+				case "XML":
+				{
+					this.result = this.toXml(str);
+				}
+					break;
+			}
 		}
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------
-	XmlParser.prototype.toXml = (function()
+	Parser.prototype.toXml = (function()
 	{
 		if(Utils.isFunction(window.DOMParser))
 		{
 			return function toXml(str)
 			{
-				new DOMParser().parseFromString(str, "text/xml");
+				return new DOMParser().parseFromString(str, "application/xml");
 			}
 		}
 		return function toXml(str)
@@ -37,21 +44,9 @@ mix.declare("mix.xml.XmlParser", ["mix.Utils", "mix.Detector", "mix.Constants"],
 		}
 	})();
 	//-----------------------------------------------------------------------------------------------------------------------
-	XmlParser.prototype.parse = function parse(str)
-	{
-		switch(this.resultType)
-		{
-			case "XML":
-			{
-				this.result = this.toXml(str);
-			}
-				break;
-		}
-	};
+	Parser.XML = "XML";
+	//	Parser.HTML = "HTML";
+	//	Parser.JSON = "JSON";
 	//-----------------------------------------------------------------------------------------------------------------------
-	XmlParser.HTML = "HTML";
-	XmlParser.JSON = "JSON";
-	XmlParser.XML = "XML";
-	//-----------------------------------------------------------------------------------------------------------------------
-	return XmlParser;
+	return Parser;
 });

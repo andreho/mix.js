@@ -830,7 +830,13 @@ mix.declare("mix.Constants", function()
 mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 {
 	"use strict";
-	var ua = window.navigator.userAgent, ie = /(MSIE )|(Trident\/7\.\d+)|(Edge\/\d+\.\d+)/.test(ua) || /*@cc_on!@*/false || !!window.document.documentMode, firefox = !ie && /Firefox\/\d+(\.\d+)?/.test(ua) || typeof window.InstallTrigger !== 'undefined', opera = !ie && !firefox && /(Opera[\/ ])|( OPR\/)|(Presto)/gm.test(ua) || !!window.opera || (window.chrome && window.chrome.webstore === undefined), chrome = !ie && !firefox && !opera && !!window.chrome, safari = !ie && !chrome && !firefox && !opera && Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0, mobile = ua.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
+	var ua = window.navigator.userAgent;
+	var ie = /(MSIE )|(Trident\/7\.\d+)|(Edge\/\d+\.\d+)/.test(ua) || /*@cc_on!@*/false || !!window.document.documentMode;
+	var firefox = !ie && /Firefox\/\d+(\.\d+)?/.test(ua) || typeof window.InstallTrigger !== 'undefined';
+	var opera = !ie && !firefox && /(Opera[\/ ])|( OPR\/)|(Presto)/gm.test(ua) || !!window.opera || (window.chrome && window.chrome.webstore === undefined);
+	var chrome = !ie && !firefox && !opera && !!window.chrome;
+	var safari = !ie && !chrome && !firefox && !opera && Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0;
+	var mobile = ua.match(/Android|BlackBerry|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i);
 
 	function has(feature)
 	{
@@ -850,25 +856,25 @@ mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 			{
 				if(ie)
 				{
-					return "IE";
+					return "ie";
 				}
 				if(firefox)
 				{
-					return "FIREFOX";
+					return "firefox";
 				}
 				if(opera)
 				{
-					return "OPERA";
+					return "opera";
 				}
 				if(chrome)
 				{
-					return "CHROME";
+					return "chrome";
 				}
 				if(safari)
 				{
-					return "SAFARI";
+					return "safari";
 				}
-				return "UNDEFINED";
+				return "undefined";
 			})(),
 			version: (function()
 			{
@@ -876,29 +882,29 @@ mix.declare("mix.Detector", ["mix.Utils"], function(Utils)
 				{
 					if(ua.indexOf("MSIE ") > -1)
 					{
-						return ua.replace(/MSIE (\d+(\.\d+)?)/, "$1");
+						return ua.replace(/MSIE (\d+(?:\.\d+)*)/, "$1");
 					}
 					else if(ua.indexOf("Edge/") > -1)
 					{
-						return ua.replace(/Edge\/(\d+\.\d+)/, "$1");
+						return ua.replace(/Edge\/(\d+(?:\.\d+)*)/, "$1");
 					}
-					return ua.replace(/Trident\/.*rv:\s*(\d+\.d+)/, "$1");
+					return ua.replace(/Trident\/.*rv:\s*(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(firefox)
 				{
-					return ua.replace(/Firefox\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Firefox\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(opera)
 				{
-					return ua.indexOf("Opera") > -1 ? ua.replace(/Opera[\/ ](\d+(\.\d+)?)/, "$1") : ua.replace(/(OPR)\/(\d+(\.\d+)?)/, "$1");
+					return ua.indexOf("Opera") > -1 ? ua.replace(/Opera[\/ ](\d+(?:\.\d+)*)/, "$1") : ua.replace(/(OPR)\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(chrome)
 				{
-					return ua.replace(/Chrome\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Chrome\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				else if(safari)
 				{
-					return ua.replace(/Safari\/(\d+(\.\d+)?)/, "$1");
+					return ua.replace(/Safari\/(\d+(?:\.\d+)*)/, "$1");
 				}
 				return "";
 			})()
@@ -5153,10 +5159,87 @@ mix.declare("mix.orm.SessionFactory", ["mix.Utils", "mix.Detector", "mix.Constan
 
 //######################################################################################
 /**
- * Created by A.Hofmann on 13.03.2015.
+ * Created by A.Hofmann on 17.03.2015 at 23:25.
  */
 
 
+//######################################################################################
+/**
+ * Created by A.Hofmann on 17.03.2015 at 23:28.
+ */
+mix.declare("mix.template.Config", ["mix.Utils"], function(Utils)
+{
+	"use strict";
+	return {
+
+	};
+});
+//######################################################################################
+/**
+ * Created by A.Hofmann on 13.03.2015.
+ */
+mix.declare("mix.template.Compiler", ["mix.Utils", "mix.Detector", "mix.Constants", "mix.template.Config"], function(Utils, Detector, Constants, TemplateConfig)
+{
+	"use strict";
+	function Compiler(xml, config)
+	{
+	}
+
+	return Compiler;
+});
+//######################################################################################
+/**
+ * Created by A.Hofmann on 17.03.2015 at 23:33.
+ */
+mix.declare("mix.xml.Parser", ["mix.Utils"], function(Utils)
+{
+	"use strict";
+	function Parser(xml, resultType)
+	{
+		if(!(this instanceof Parser))
+		{
+			return new Parser(xml);
+		}
+		this.resultType = resultType || Parser.XML;
+		this.result = null;
+		if(Utils.isString(xml))
+		{
+			switch(this.resultType)
+			{
+				case "XML":
+				{
+					this.result = this.toXml(str);
+				}
+					break;
+			}
+		}
+	}
+
+	//-----------------------------------------------------------------------------------------------------------------------
+	Parser.prototype.toXml = (function()
+	{
+		if(Utils.isFunction(window.DOMParser))
+		{
+			return function toXml(str)
+			{
+				return new DOMParser().parseFromString(str, "text/xml");
+			}
+		}
+		return function toXml(str)
+		{
+			var xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+			xmlDoc.async = false;
+			xmlDoc.loadXML(str);
+			return xmlDoc;
+		}
+	})();
+	//-----------------------------------------------------------------------------------------------------------------------
+	Parser.XML = "XML";
+	//	Parser.HTML = "HTML";
+	//	Parser.JSON = "JSON";
+	//-----------------------------------------------------------------------------------------------------------------------
+	return Parser;
+});
 //######################################################################################
 /**
  * Created by A.Hofmann on 21.02.2015.
