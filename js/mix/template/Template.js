@@ -1,12 +1,14 @@
 /**
  * Created by A.Hofmann on 13.03.2015.
  */
-mix.declare("mix.template.Compiler", ["mix.Utils", "mix.Detector", "mix.Constants", "mix.template.Config"], function(Utils, Detector, Constants, TemplateConfig)
+mix.declare("mix.template.Template",
+    ["mix.Utils", "mix.template.Config"],
+    function (Utils, TemplateConfig)
 {
 	"use strict";
-	function Compiler(xml, config)
+    function Template(xml, config)
 	{
 	}
 
-	return Compiler;
+    return Template;
 });

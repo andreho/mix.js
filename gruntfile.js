@@ -3,8 +3,11 @@
  */
 module.exports = function(grunt)
 {
+    console.log('Working dir: ' + __dirname);
+
 	var cfg = grunt.file.readJSON('package.json');
-	var dir = 'C:/Workspace/Idea/mix.js';
+    var dir = __dirname;
+
 	grunt.initConfig({
 
 		pkg: cfg,
@@ -27,7 +30,7 @@ module.exports = function(grunt)
 			},
 			js: {
 				src: [dir + "/js/Core.js", dir + '/js/mix/**/*.js', dir + '/js/test/**/*.js'],
-				dest: dir + '/build/mix.js'
+                dest: dir + '/app/js/mix.js'
 			}
 		},
 		watch: {

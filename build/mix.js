@@ -5216,6 +5216,7 @@ mix.declare("mix.xml.Parser", ["mix.Utils"], function(Utils)
 	}
 
 	//-----------------------------------------------------------------------------------------------------------------------
+
 	Parser.prototype.toXml = (function()
 	{
 		if(Utils.isFunction(window.DOMParser))

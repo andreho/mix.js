@@ -149,13 +149,16 @@ window._mix_ = (window._mix_ || "_mix_");
 		var host = location.protocol + "//" + location.host;
 		return dep.url ? dep.url.search(host) !== 0 : false;
 	};
+
 	Schema.defaultPreprocessor = undefined;
+
 	Schema.defaultURLProvider = function(dep)
 	{
 		var location = window.location;
 		var base = location.href.substring(0, location.href.length - (location.port ? location.port.length + 1 : 0) - location.pathname.length - (location.search ? location.search.length : 0));
 		var url = base + (location.port ? ":" + location.port : "") + "/" + cfg.baseUrl;
 		url += ("/" + (isFunction(this.path) ? this.path.call(this, dep) : this.path));
+
 		var alias;
 		if(isFunction(this.alias))
 		{
@@ -165,11 +168,8 @@ window._mix_ = (window._mix_ || "_mix_");
 		{
 			alias = this.alias[dep.alias];
 		}
-		else
-		{
-			alias = dep.alias;
-		}
-		alias = (isFunction(this.prefix) ? this.prefix.call(this, dep) : this.prefix) + alias + (isFunction(this.suffix) ? this.suffix.call(this, dep) : this.suffix);
+
+        alias = (isFunction(this.prefix) ? this.prefix.call(this, dep) : this.prefix) + (alias || dep.alias) + (isFunction(this.suffix) ? this.suffix.call(this, dep) : this.suffix);
 		url += ("/" + alias);
 		url = url.replace(/([^:])\/+/g, "$1/");
 		return url;
@@ -247,7 +247,7 @@ window._mix_ = (window._mix_ || "_mix_");
 		{
 			return ns;
 		}
-		if(!isString(ns) || !nsRegExp.test(ns))
+        if (!isString(ns) || (ns.length > 0 && !nsRegExp.test(ns)))
 		{
 			throw new Error("Invalid namespace alias: '" + ns + "'");
 		}
@@ -258,14 +258,15 @@ window._mix_ = (window._mix_ || "_mix_");
 		for(; i < split.length; i++)
 		{
 			subNs = split[i];
-			if(!current.has(subNs))
-			{
-				current = new Namespace(subNs, current);
-			}
-			else
-			{
-				current = current[subNs];
-			}
+
+            if (subNs) {
+                if (!current.has(subNs)) {
+                    current = new Namespace(subNs, current);
+                }
+                else {
+                    current = current[subNs];
+                }
+            }
 		}
 		return current;
 	};
@@ -370,9 +371,17 @@ window._mix_ = (window._mix_ || "_mix_");
 				dependencies = [];
 			}
 		}
-		var dotIdx = key.lastIndexOf(".");
-		var ns = dotIdx > -1 ? key.substr(0, dotIdx) : key;
-		key = key.substr(dotIdx + 1);
+
+        var dotIdx = key.lastIndexOf("."), ns;
+
+        if (dotIdx > -1) {
+            ns = dotIdx > -1 ? key.substr(0, dotIdx) : key;
+            key = key.substr(dotIdx + 1);
+        }
+        else {
+            ns = "";
+        }
+
 		return this.resource(ns).alias(key).assignable(assignable).type(type).dependencies(dependencies).build(builder);
 	};
 	Core.prototype.extend = function(key, dependencies, builder)
@@ -407,7 +416,11 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		else if(isObject(o))
 		{
-			var resource = new Resource(this.namespace(o.ns || o.namespace || this)).alias(o.alias).type(o.type).assignable(isBoolean(o.assignable) ? o.assignable : true).dependencies((o.dependencies || o.requires || []));
+            var resource = new Resource(this.namespace(o.ns || o.namespace || this))
+                .alias(o.alias)
+                .type(o.type)
+                .assignable(isBoolean(o.assignable) ? o.assignable : true)
+                .dependencies((o.dependencies || o.requires || []));
 			if(isFunction(o.builder))
 			{
 				return resource.build(o.builder);
@@ -416,16 +429,22 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		throw new Error("Unsupported parameter type: '" + o + "', please provide either a string or a hash.");
 	};
-	Core.prototype.inject = function(dependencies)
+    Core.prototype.inject = function (dep, dependencies)
 	{
 		var i = 0, j = 0, l = dependencies.length, args = new Array(l);
+
 		while(i < l)
 		{
 			var d = dependencies[i++];
+
 			if(this.isInjectable(d))
 			{
-				var ed = this.escapeDependency(d);
-				if(ed === d)
+                var ed = this.unescapeDependency(d);
+
+                if (ed === "dep") {
+                    args[j++] = dep;
+                }
+                else if (ed === d)
 				{
 					args[j++] = registry[ed];
 				}
@@ -441,10 +460,19 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
 		return d.length && d.charAt(0) !== "!";
 	};
-	Core.prototype.escapeDependency = function(d)
+    Core.prototype.escapeDependency = function (d) {
+        return "!" + d;
+    };
+    Core.prototype.unescapeDependency = function (d)
 	{
 		return d.length && (d.charAt(0) === "!" || d.charAt(0) === "-") ? d.substr(1) : d;
 	};
+    Core.prototype.isResourceDependency = function (d) {
+        return d.length && (d.search(/^[\w\-$]+:.+$/i)) === 0;
+    };
+    Core.prototype.getResourceType = function (d) {
+        return d.replace(/^([\w\-$]+):.+$/i, "$1");
+    };
 	Core.prototype.toString = function()
 	{
 		return "";
@@ -552,6 +580,7 @@ window._mix_ = (window._mix_ || "_mix_");
 		else
 		{
 			dependencies = [];
+
 			for(var i = 0, l = arguments.length; i < l; i++)
 			{
 				dependencies[i] = arguments[i];
@@ -563,26 +592,37 @@ window._mix_ = (window._mix_ || "_mix_");
 	Resource.prototype.build = function(builder)
 	{
 		this._builder_ = builder;
-		var dep = new Dependency(this._ns_, this._alias_, this._dependencies_, this._builder_, this._type_, this._assignable_);
-		if(!dep.alias || !isString(dep.alias))
+
+        var dep = new Dependency(this._ns_, this._alias_, this._dependencies_, this._builder_, this._type_, this._assignable_);
+
+        if(!dep.alias || !isString(dep.alias))
 		{
 			throw new Error("Invalid alias: '" + dep.alias + "'");
 		}
-		if(isArray(dep.dependencies))
+
+        if(isArray(dep.dependencies))
 		{
 			var found = 0;
-			for(var i = 0, l = dep.dependencies.length; i < l; i++)
+
+            for(var i = 0, l = dep.dependencies.length; i < l; i++)
 			{
 				var d = dep.dependencies[i];
-				var fqn = core.escapeDependency(d);
-				if(fqn in registry || !core.isDependency(d))
-				{
-					found += 1;
-				}
+                var fqn = core.unescapeDependency(d);
+
+                if (!core.isDependency(d) || fqn in registry) {
+                    found += 1;
+                }
 				else
 				{
 					dep.matrix[fqn] = true;
 					requiredMap[fqn] = 1 + (requiredMap[fqn] || 0);
+
+                    if (core.isResourceDependency(d)) {
+                        var type = core.getResourceType(d);
+                        core.declare(d, type, [core.escapeDependency("dep")], function (dep) {
+                            return dep.value;
+                        });
+                    }
 				}
 			}
 			if(found < l)
@@ -616,6 +656,7 @@ window._mix_ = (window._mix_ || "_mix_");
 		this.alias = alias;
 		this.builder = builder;
 		this.dependencies = dependencies;
+        this.result = undefined;
 		this.value = undefined;
 		this.url = null;
 		this.loaded = false;
@@ -624,7 +665,8 @@ window._mix_ = (window._mix_ || "_mix_");
 		this.loadable = (type in cfg.schemas);
 		this.external = false;
 		this.mime = "*/*";
-		if(this.loadable)
+
+        if(this.loadable)
 		{
 			this.schema = cfg.schemas[type];
 			this.schema.setup(this);
@@ -670,23 +712,30 @@ window._mix_ = (window._mix_ || "_mix_");
 		{
 			return;
 		}
-		this.resolved = true;
-		var fqn = this.key;
-		var args = core.inject(this.dependencies);
+
+        this.resolved = true;
+
+        var fqn = this.key;
+        var args = core.inject(this, this.dependencies);
+
 		try
 		{
 			var result = this.builder.apply(null, args);
-			counter++;
-			if(this.assignable)
+
+            counter++;
+
+            if(this.assignable)
 			{
 				registry[fqn] = result;
 				this.ns.set(this.alias, result);
-				if(cfg.debug)
+
+                if(cfg.debug)
 				{
 					cfg.console.log("%c" + ("      ".substr(0, 6 - counter.toString().length) + counter) + ": %c" + fqn, cfg.logStyle.replace("COLOR", "red"), cfg.logStyle.replace("COLOR", "green"));
 				}
 			}
-			this.value = null;
+
+            this.value = null;
 		}
 		catch(e)
 		{
@@ -699,7 +748,8 @@ window._mix_ = (window._mix_ || "_mix_");
 		if(res && (res.srcElement || res.target))
 		{
 			var src = (res.srcElement || res.target);
-			if(src.onload || src.onerror)
+
+            if(src.onload || src.onerror)
 			{
 				src.onload = null;
 				src.onerror = null;
@@ -714,23 +764,32 @@ window._mix_ = (window._mix_ || "_mix_");
 	Dependency.prototype.handleResult = function(res)
 	{
 		this.loaded = true;
-		if(res && (res.srcElement || res.target))
+
+        if (res)
 		{
-			var src = (res.srcElement || res.target);
-			if(src.onload || src.onerror)
-			{
-				src.onload = null;
-				src.onerror = null;
-			}
-			//Internal source ...
-			if(src instanceof XMLHttpRequest)
-			{
-				if(!(src.status == 200 || src.status == 304))
-				{
-					throw new Error("Unable to load following dependency: '" + this.alias + "' at: '" + this.ns + "' from: '" + this.url + "'");
-				}
-				this.schema.injector.call(this.schema, this, this.value = src.responseText);
-			}
+            this.result = res;
+
+            if (res.srcElement || res.target) {
+                var src = (res.srcElement || res.target);
+
+                if (src.onload || src.onerror) {
+                    src.onload = null;
+                    src.onerror = null;
+                }
+
+                //Internal source ...
+                if (src instanceof XMLHttpRequest) {
+                    if (!(src.status == 200 || src.status == 304)) {
+                        throw new Error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'");
+                    }
+                    this.schema.injector.call(this.schema, this, this.value = src.responseText);
+                }
+            }
+            else {
+                this.value = res;
+            }
+
+            //In case someone forget to call it in the corresponding injector ...
 			this.resolve();
 		}
 	};

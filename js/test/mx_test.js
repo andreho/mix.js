@@ -2,7 +2,7 @@
  * Created by A.Hofmann on 21.02.2015.
  */
 mix.config("mix.core", {
-	baseUrl: "/Example/Mx",
+    baseUrl: "/mix.js/app",
 	schemas: {
 		external: mix.Schema({
 			url: {
@@ -28,7 +28,22 @@ mix.config("mix.core", {
 				window.document.head.appendChild(script);
 				dep.resolve();
 			}
-		})
+        }),
+        template: mix.Schema({
+            alias: function (dep) {
+                return _mix_.isResourceDependency(dep.alias) ? dep.alias.replace(/[^:]+:(.+)/i, "$1") : dep.alias;
+            },
+            mime: {
+                "default": "application/xml"
+            },
+            path: "/template",
+            suffix: ".xml",
+            injector: function (dep, src) {
+                "use strict";
+                dep.value = src;
+                dep.resolve();
+            }
+        })
 	}
 });
 _mix_.resource().alias("test_lib").type("library").requires("jQuery", "test_lib2").build(function()
