@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<mx:template
+        id="custom"
+        xmlns:mx="www.any.host.com"
+        xmlns:p="www.any.host.com/p"
+
+        p:list="[]"
+        p:name="'foo'"
+        p:map="{}"
+        p:order="null">
+
+    <mx:partial ref=""/>
+    <mx:delegate to="" args=""/>
+
+    <mx:each of="${map?.keys()}" fail="">
+    </mx:each>
+
+    <mx:if test="${order?.bookingInformation?.booked || false}">
+        YES
+        <mx:else>NO</mx:else>
+    </mx:if>
+
+    <mx:switch test="" fail="">
+        <mx:case value="foo">
+
+            <mx:break/>
+        </mx:case>
+        <mx:default>
+        </mx:default>
+    </mx:switch>
+
+    <mx:for init="${i = 0, j = 0}" test="${i < list?.length}" step="${i += 3}" fail="">
+        <span>${j++}-${i}:${list[i]}
+            <br/>
+        </span>
+    </mx:for>
+
+    <mx:while test="" fail="">
+    </mx:while>
+
+</mx:template>
