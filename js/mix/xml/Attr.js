@@ -8,7 +8,7 @@ mix.declare("mix.xml.Attr", function () {
 
         if (ns) {
             this.ns = ns;
-            this.prefix = prefix;
+            this.prefix = prefix || "";
         }
         else {
             this.ns = this.prefix = "";

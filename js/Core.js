@@ -25,27 +25,27 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
 		return typeof o === "boolean";
 	}
-
+	function isNumber(o)
+	{
+		return typeof o === "number";
+	}
 	function isString(o)
 	{
 		return typeof o === "string";
 	}
-
 	function isObject(o)
 	{
 		return typeof o === "object";
 	}
-
 	function isFunction(o)
 	{
 		return typeof o === "function";
 	}
-
 	function isArray(o)
 	{
 		return o instanceof Array;
 	}
-
+	//------------------------------------------------------------------------------------------------------
 	function propagate(src, dst)
 	{
 		if(isArray(dst))
@@ -84,26 +84,26 @@ window._mix_ = (window._mix_ || "_mix_");
 			}
 		}
 	};
-
-    function argsToArray(args, lst) {
+	//------------------------------------------------------------------------------------------------------------------
+    function argsToArray(args, arr) {
         if (args.length > 0) {
             if (args.length === 1) {
                 if (isArray(args[0])) {
-                    Array.prototype.push.apply(lst, args[0]);
+                    Array.prototype.push.apply(arr, args[0]);
                 }
                 else {
-                    lst.push(args[0]);
+                    arr.push(args[0]);
                 }
             }
             else {
                 for (var i = 0, l = args.length; i < l; i++) {
-                    lst.push(args[i]);
+                    arr.push(args[i]);
                 }
             }
         }
-        return lst;
+        return arr;
     }
-
+	//------------------------------------------------------------------------------------------------------------------
 	function read(src, path)
 	{
         path = isString(path) ? path.split(/\./g) : isArray(path) ? path : [path];
@@ -119,149 +119,267 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		return current;
 	}
-
-	//------------------------------------------------------------------------------------------------------
-	var context = {
-		loaded: "LOADED"
-	};
-	//------------------------------------------------------------------------------------------------------
-	function Schema(arg)
+	//------------------------------------------------------------------------------------------------------------------
+	function Schema(o)
 	{
 		if(!(this instanceof Schema))
 		{
-			return new Schema(arg);
+			return new Schema(o);
 		}
-		this.url = Schema.defaultURLProvider; //String, Object or function (d:Dependency):String
-		this.external = Schema.defaultExternal; //Boolean or function (d:Dependency):Boolean
-		this.alias = ""; //Object or function (d:Dependency):String
-		this.prefix = ""; //String or function (d:Dependency):String
-		this.suffix = ""; //String or function (d:Dependency):String
-		this.path = "/"; //String or function (d:Dependency):String
-		this.mime = "*/*"; //or function (d:Dependency):String
 
-		this.loader = Schema.defaultLoader; //function (d:Dependency):void
-        this.injector = Schema.defaultInjector; //function (d:Dependency, rawData:String):String
-        this.preprocessor = Schema.defaultPreprocessor; //function (d:Dependency, rawData:String):String
+		this._urls = []; //Schema.defaultURLProvider; //String, Object or function (d:Dependency):String
+		this._external = false; //Schema.defaultExternal; //Boolean or function (d:Dependency):Boolean
 
-		if(isObject(arg))
+		this._alias = ""; //String, Object or function (d:Dependency):String
+		this._prefix = ""; //String or function (d:Dependency):String
+		this._suffix = ""; //String or function (d:Dependency):String
+		this._path = "/"; //String or function (d:Dependency):String
+		this._mime = "*/*"; //String or function (d:Dependency):String
+
+		this._loaded = null; //Schema.defaultLoader; //function (d:Dependency):void
+		this._failed = null; //Schema.defaultLoader; //function (d:Dependency):void
+
+		this._loader = null; //Schema.defaultLoader; //function (d:Dependency):void
+        this._injector = null; //Schema.defaultInjector; //function (d:Dependency, rawData:String):String
+        this._preprocessor = null; //Schema.defaultPreprocessor; //function (d:Dependency, rawData:String):String
+
+		if(isObject(o))
 		{
-			for(var key in arg)
+			for(var k in o)
 			{
-				var val = arg[key];
+				var v = o[k];
 
-				if(val === "setup")
-				{
-					continue;
-				}
-				else if(key in this)
-				{
-					this[key] = val;
+				switch (k){
+					case "urls": this.urls(v); break;
+					case "alias": this.alias(v); break;
+					case "prefix": this.prefix(v); break;
+					case "suffix": this.suffix(v); break;
+					case "path": this.path(v); break;
+					case "mime": this.mime(v); break;
+					case "external": this.external(v); break;
+					case "loaded": this.loaded(v); break;
+					case "failed": this.failed(v); break;
+					case "loader": this.loader(v); break;
+					case "injector": this.injector(v); break;
+					case "preprocessor": this.preprocessor(v); break;
+					default:{
+						throw new Error("Unsupported parameter: "+k);
+					}
 				}
 			}
 		}
-		else
-		{
-			throw new TypeError("Invalid argument, expected Object, but got: " + arg);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------------
-	Schema.defaultExternal = function defaultExternal(dep)
-	{
-		var location = window.location;
-		var host = location.protocol + "//" + location.host;
-		return dep.url ? dep.url.search(host) !== 0 : false;
 	};
-
-	Schema.defaultPreprocessor = undefined;
-
-	Schema.defaultURLProvider = function(dep)
-	{
-		var location = window.location;
-		var base = location.href.substring(0, location.href.length - (location.port ? location.port.length + 1 : 0) - location.pathname.length - (location.search ? location.search.length : 0));
-		var url = base + (location.port ? ":" + location.port : "") + "/" + cfg.baseUrl;
-		url += ("/" + (isFunction(this.path) ? this.path.call(this, dep) : this.path));
-
-		var alias;
-		if(isFunction(this.alias))
-		{
-			alias = this.alias.call(this, dep);
+	//------------------------------------------------------------------------------------------------------------------
+	Schema.prototype.urls = function(val){
+		if(val !== undefined){
+			argsToArray(arguments, this._urls);
+			return this;
 		}
-		else if(isObject(this.alias))
-		{
-			alias = this.alias[dep.alias];
-		}
-
-        alias = (isFunction(this.prefix) ? this.prefix.call(this, dep) : this.prefix) + (alias || dep.alias) + (isFunction(this.suffix) ? this.suffix.call(this, dep) : this.suffix);
-		url += ("/" + alias);
-		url = url.replace(/([^:])\/+/g, "$1/");
-		return url;
+		return this._urls;
 	};
-	Schema.defaultLoader = function(dep)
-	{
-		if(!dep.url)
-		{
-			throw new Error("Please provide an URL for the definition: " + dep + ", type: " + dep.type);
+	Schema.prototype.alias = function(val){
+		if(isString(val) || isObject(val) || isFunction(val)){
+			this._alias = val;
+			return this;
 		}
-		if(dep.external)
-		{
-			var script = window.document.createElement("script");
-			script.type = dep.mime;
-			script.src = dep.url;
-			script.setAttribute("data-alias", dep.key);
-			script.onload = Dependency.prototype.handleResult.bind(dep);
-			script.onerror = Dependency.prototype.handleFailure.bind(dep);
-			window.document.head.appendChild(script);
+		return this._alias;
+	};
+	Schema.prototype.external = function(val){
+		if(isBoolean(val) || isObject(val) || isFunction(val)){
+			this._external = val;
+			return this;
 		}
-		else
-		{
-			var request = new XMLHttpRequest();
-			request.onload = Dependency.prototype.handleResult.bind(dep);
-			request.onerror = Dependency.prototype.handleFailure.bind(dep);
-			request.open("GET", dep.url, true);
-			request.send();
+		return this._external;
+	};
+	Schema.prototype.path = function(val){
+		if(isString(val) || isFunction(val)){
+			this._path = val;
+			return this;
+		}
+		return this._path;
+	};
+	Schema.prototype.prefix = function(val){
+		if(isString(val) || isFunction(val)){
+			this._prefix = val;
+			return this;
+		}
+		return this._prefix;
+	};
+	Schema.prototype.suffix = function(val){
+		if(isString(val) || isFunction(val)){
+			this._suffix = val;
+			return this;
+		}
+		return this._suffix;
+	};
+	Schema.prototype.mime = function(val){
+		if(isString(val) || isObject(val) || isFunction(val)){
+			this._mime = val;
+			return this;
+		}
+		return this._mime;
+	};
+	Schema.prototype.loaded = function(val){
+		if(isFunction(val)){
+			this._loaded = val;
+			return this;
+		}
+		return this._loaded;
+	};
+	Schema.prototype.failed = function(val){
+		if(isFunction(val)){
+			this._failed = val;
+			return this;
+		}
+		return this._failed;
+	};
+	Schema.prototype.loader = function(val){
+		if(isFunction(val)){
+			this._loader = val;
+			return this;
+		}
+		return this._loader;
+	};
+	Schema.prototype.injector = function(val){
+		if(isFunction(val)){
+			this._injector = val;
+			return this;
+		}
+		return this._injector;
+	};
+	Schema.prototype.preprocessor = function(val){
+		if(isFunction(val)){
+			this._preprocessor = val;
+			return this;
+		}
+		return this._preprocessor;
+	};
+	//------------------------------------------------------------------------------------------------------------------
+	Schema.default = {
+		external: function (dep) {
+			var location = window.location;
+			var host = location.protocol + "//" + location.host;
+
+			var retry = dep._retry;
+            if(retry < dep.urls().length){
+				return dep.urls()[retry].search(host) !== 0
+			}
+			return false;
+		},
+		urls: function(dep){
+			var location = window.location;
+			var base = location.href.substring(0,
+				location.href.length -
+				(location.port ? location.port.length + 1 : 0) -
+				location.pathname.length - (location.search ? location.search.length : 0));
+
+			var url = base + (location.port? ":" + location.port : "") + "/" + cfg.baseUrl;
+
+			url += ("/" + (isFunction(this.path()) ? this.path().call(this, dep) : this.path()));
+
+			var alias;
+			if(isFunction(this.alias()))
+			{
+				alias = this.alias().call(this, dep);
+			}
+			else if(isObject(this.alias()))
+			{
+				alias = this.alias()[dep.alias()];
+			}
+
+			alias = (isFunction(this.prefix()) ? this.prefix().call(this, dep) : this.prefix()) +
+			(alias || dep.alias) +
+			(isFunction(this.suffix()) ? this.suffix().call(this, dep) : this.suffix());
+			url += ("/" + alias);
+			url = url.replace(/([^:])\/+/g, "$1/");
+			return url;
+		},
+		loader: function(dep){
+
+			if(dep.urls().length)
+			{
+				throw new Error("Please provide an URL for the definition: " + dep + ", type: " + dep.type());
+			}
+
+			var self = this,
+			onLoaded = function(e){
+				dep.flags(Dependency.LOADED);
+				dep.result = e;
+				self.loaded.call(self, dep);
+			},
+			onFailed = function(e){
+				dep.result = e;
+				self.failed.call(self, dep);
+			};
+
+			if(dep.is(Dependency.EXTERNAL))
+			{
+				var script = window.document.createElement("script");
+				script.type = dep.mime();
+				script.src = dep.url();
+				script.setAttribute("data-key", dep.toString());
+				script.onload = onLoaded;
+				script.onerror = onFailed;
+				window.document.head.appendChild(script);
+			}
+			else
+			{
+				var request = new XMLHttpRequest();
+				request.onload = onLoaded;
+				request.onerror = onFailed;
+				request.open("GET", dep.url(), true);
+				request.send();
+			}
+		},
+		injector: function(dep, raw){
+			dep.resolve();
+		},
+		preprocessor: function(dep){
 		}
 	};
-	Schema.defaultInjector = function(dep, raw)
-	{
-		dep.resolve();
-	};
-	//------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------------------------
 	Schema.prototype.setup = function(dep)
 	{
-		dep.url = isFunction(this.url) ? this.url.call(this, dep) : isObject(this.url) ? this.url[dep] : this.url;
-		dep.mime = isFunction(this.mime) ? this.mime.call(this, dep) : isObject(this.mime) ? this.mime[dep] || this.mime["default"] : this.mime;
-		dep.external = isFunction(this.external) ? this.external.call(this, dep) : isObject(this.external) ? this.external[dep] : this.external;
+		dep.urls(isFunction(this.urls()) ? this.urls().call(this, dep) : isObject(this.urls())? this.urls()[dep] : this.urls());
+		dep.mime(isFunction(this.mime()) ? this.mime().call(this, dep) : isObject(this.mime()) ? this.mime()[dep] || this.mime()["default"] : this.mime());
+		dep.external(isFunction(this.external()) ? this.external().call(this, dep) : isObject(this.external()) ? this.external()[dep] : this.external());
 		return this;
 	};
-	//------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------------------------
+	var context = {
+		loaded: "LOADED"
+	};
 	var cfg = {
 		debug: true,
+		baseUrl: "/app",
 		logStyle: "color: COLOR; font-style: bold;",
 		console: window.console,
-		baseUrl: "/app",
 		schemas: {},
-		internal: {}
+		internal: {},
+		"default":{
+			type: "lib",
+			unknownType: ""
+		}
 	};
-	//-----------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------------------------
 	var config = {
 		mix: {
 			core: cfg
 		}
 	};
-	//-----------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------------------------
 	var registry = {};
 	var namespaces = {};
-	var requiredMap = {};
-	var requiredList = [];
+	var pendingMap = {};
+	var pendingList = [];
 	var nsRegExp = /[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*/;
-	//------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------------------------
 	function Core()
 	{
-		Object.defineProperty(this, "_config_", {value: config });
+		Object.defineProperty(this, "_config_", {value: config});
 		Object.defineProperty(this, "_context_", {value: context});
 		Object.defineProperty(this, "_registry_", {value: registry});
-		Object.defineProperty(this, "_pending_", {value: requiredList});
+		Object.defineProperty(this, "_pending_", {value: pendingList});
 	}
 
 	Core.prototype.namespace = function(ns)
@@ -327,12 +445,9 @@ window._mix_ = (window._mix_ || "_mix_");
 		if(isObject(context))
 		{
 			this._context_ = context;
+			return this;
 		}
-		else if(context === undefined)
-		{
-			return this._context_;
-		}
-		return this;
+		return this._context_;
 	};
 	Core.prototype.has = function(alias)
 	{
@@ -340,49 +455,96 @@ window._mix_ = (window._mix_ || "_mix_");
 	};
 	Core.prototype.set = function(key, value, opts)
 	{
-		if(key in this)
-		{
+		if(key in this){
 			throw new Error("Given definition with key '" + key + "' exists in namespace '" + this + "' already.");
 		}
-		if(isObject(opts))
-		{
+		if(isObject(opts)){
 			Object.defineProperty(this, key, opts);
 		}
-		else
-		{
+		else{
 			this[key] = value;
 		}
 		return this;
 	};
-	Core.prototype.provide = function(key, dependencies, builder)
+	Core.prototype.provide = function(key, dependencies, callback)
 	{
-		return this.declare(key, "provided", dependencies, builder);
+		return this.declare(key, "provided", dependencies, callback);
 	};
-	Core.prototype.declare = function(key, type, dependencies, builder)
+	Core.prototype.declare = function(key, type, dependencies, callback)
 	{
+		switch (arguments.length)
+		{
+			case 1: {
+				if(isObject(key)){
+					return new Dependency(key);
+				}
+			}
+				break;
+			case 2: {
+				if(isString(key) && isFunction(type)){
+					return new Dependency({
+						key: key,
+						type: cfg.default.type,
+						callback: type
+					});
+				}
+				else if(isArray(key) && isFunction(type)){
+					return new Dependency({
+						assignable: false,
+						key: cfg.default.unknownType,
+						type: cfg.default.type,
+						callback: type
+					});
+				}
+			}
+				break;
+			case 3: {
+				if(isString(key) && isArray(type) && isFunction(dependencies)){
+					return new Dependency({
+						key: key,
+						type: cfg.default.type,
+						dependencies: type,
+						callback: dependencies
+					});
+				}
+			}
+				break;
+			case 4: {
+				if(isString(key) && isString(type) && isArray(dependencies) && isFunction(callback)){
+					return new Dependency({
+						key: key,
+						type: type,
+						dependencies: dependencies,
+						callback: callback
+					});
+				}
+			}
+				break;
+		}
+
 		var assignable = "extend" !== type;
 		if(assignable && (key in registry))
 		{
 			throw new Error("Given definition with key '" + key + "' was already defined.");
 		}
-		if(builder === undefined)
+		if(callback === undefined)
 		{
 			if(isFunction(type))
 			{
-				builder = type;
+				callback = type;
 				dependencies = [];
 				type = "declaration";
 			}
 			else if(isArray(type))
 			{
-				builder = dependencies;
+				callback = dependencies;
 				dependencies = type;
 				type = "declaration";
 			}
 			else if(type === "provided")
 			{
 				var provided = dependencies;
-				builder = function providedValue()
+				callback = function providedValue()
 				{
 					return provided;
 				}
@@ -390,7 +552,7 @@ window._mix_ = (window._mix_ || "_mix_");
 			}
 			else if(isFunction(dependencies))
 			{
-				builder = dependencies;
+				callback = dependencies;
 				dependencies = [];
 			}
 		}
@@ -405,7 +567,7 @@ window._mix_ = (window._mix_ || "_mix_");
             ns = "";
         }
 
-		return this.resource(ns).alias(key).assignable(assignable).type(type).dependencies(dependencies).build(builder);
+		return this.dependency(ns).alias(key).assignable(assignable).type(type).dependencies(dependencies).build(callback);
 	};
 	Core.prototype.extend = function(key, dependencies, builder)
 	{
@@ -427,11 +589,13 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
 		return this.declare(key, "plugin", dependencies, builder);
 	};
-	Core.prototype.resource = function(o)
+	Core.prototype.dependency = function(o)
 	{
+
+
 		if(!arguments.length)
 		{
-			return new Resource(this);
+			return new Dependency().namespace(o);
 		}
 		else if(isString(o))
 		{
@@ -469,7 +633,12 @@ window._mix_ = (window._mix_ || "_mix_");
                 }
                 else if (ed === d)
 				{
-					args[j++] = registry[ed];
+					if(ed in registry){
+						args[j++] = registry[ed];
+					}
+					else{
+						throw new Error("Unable to inject '"+ed+"' at index: "+j+" for: '"+dep+"'");
+					}
 				}
 			}
 		}
@@ -559,144 +728,66 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		return arr.reverse().join(".");
 	};
-	//------------------------------------------------------------------------------------------------------
-    //function Resource(ns)
-    //{
-    //	this._ns_ = ns;
-    //	this._type_ = undefined;
-    //	this._alias_ = undefined;
-    //	this._builder_ = undefined;
-    //	this._assignable_ = true;
-    //	this._dependencies_ = undefined;
-    //}
-    //
-    //Resource.prototype.alias = function(alias)
-    //{
-    //	this._alias_ = alias;
-    //	return this;
-    //};
-    //Resource.prototype.assignable = function(assignable)
-    //{
-    //	this._assignable_ = !!assignable;
-    //	return this;
-    //};
-    //Resource.prototype.type = function(type)
-    //{
-    //	this._type_ = type;
-    //	return this;
-    //};
-    //Resource.prototype.dependencies = Resource.prototype.requires = function()
-    //{
-    //	var dependencies = null;
-    //	if(arguments.length === 1)
-    //	{
-    //		dependencies = arguments[0];
-    //		if(isString(dependencies))
-    //		{
-    //			dependencies = [dependencies];
-    //		}
-    //		else if(!isArray(dependencies))
-    //		{
-    //			throw new TypeError("Awaited either a string or an array.");
-    //		}
-    //	}
-    //	else
-    //	{
-    //		dependencies = [];
-    //
-    //		for(var i = 0, l = arguments.length; i < l; i++)
-    //		{
-    //			dependencies[i] = arguments[i];
-    //		}
-    //	}
-    //	this._dependencies_ = dependencies;
-    //	return this;
-    //};
-    //Resource.prototype.build = function(builder)
-    //{
-    //	this._builder_ = builder;
-    //
-    //   var dep = new Dependency(this._ns_, this._alias_, this._dependencies_, this._builder_, this._type_, this._assignable_);
-    //
-    //   if(!dep.alias || !isString(dep.alias))
-    //	{
-    //		throw new Error("Invalid alias: '" + dep.alias + "'");
-    //	}
-    //
-    //   if(isArray(dep.dependencies))
-    //	{
-    //		var found = 0;
-    //
-    //       for(var i = 0, l = dep.dependencies.length; i < l; i++)
-    //		{
-    //			var d = dep.dependencies[i];
-    //           var fqn = core.unescapeDependency(d);
-    //
-    //           if (!core.isDependency(d) || fqn in registry) {
-    //               found += 1;
-    //           }
-    //			else
-    //			{
-    //				dep.matrix[fqn] = true;
-    //				requiredMap[fqn] = 1 + (requiredMap[fqn] || 0);
-    //
-    //               if (core.isResourceDependency(d)) {
-    //                   var type = core.getResourceType(d);
-    //                   core.declare(d, type, [core.escapeDependency("dep")], function (dep) {
-    //                       return dep.value;
-    //                   });
-    //               }
-    //			}
-    //		}
-    //		if(found < l)
-    //		{
-    //			requiredList.push(dep);
-    //			return dep.ns;
-    //		}
-    //	}
-    //	else if(isFunction(dep.dependencies))
-    //	{
-    //		dep.builder = dep.dependencies;
-    //	}
-    //	if(isFunction(dep.builder))
-    //	{
-    //		dep.load();
-    //	}
-    //	else
-    //	{
-    //		throw new Error("Builder parameter must be a function.");
-    //	}
-    //	return dep.ns;
-    //};
     //-----------------------------------------------------------------------------------------------------------------------
-    function Dependency()
+    function Dependency(o)
 	{
-        this._flags_ = 0;
+		if(!(this instanceof Dependency)){
+			return new Dependency(o);
+		}
 
-        this._ns_ = null;
-        this._alias_ = "";
-        this._type_ = "";
+        this._flags = 0;
 
-        this._key_ = ""; //(ns.alias) ? ns + "." + alias : alias;
+        this._ns = null;
+        this._type = "";
+        this._alias = "";
 
-		this._builder_ = undefined;
+        this._key = ""; //(ns.alias) ? ns + "." + alias : alias;
 
-        this._dependencies_ = [];
-        this._dependenciesHash_ = {};
+		this._callback = undefined;
 
-        this.counter = 0;
-        this.value = undefined;
-        this.result = undefined;
+        this._dependencies = [];
+        this._dependenciesHash = {};
 
-        this._url_ = [];
-        this._mime_ = "*/*";
-        this._schema_ = null;
+        this._result = undefined;
+        this._value = undefined;
 
-        //if(this.loadable)
-        //{
-        //	this.schema = cfg.schemas[type];
-        //	this.schema.setup(this);
-        //}
+		this._retry = 0;
+        this._schema = null;
+        this._mime = "*/*";
+        this._urls = [];
+
+		if(isObject(o))
+		{
+			for(var k in o)
+			{
+				var v = o[k];
+				switch (k)
+				{
+					case "assignable": this.flags(Dependency.ASSIGNABLE); break;
+					case "loadable": this.flags(Dependency.LOADABLE); break;
+					case "external": this.flags(Dependency.EXTERNAL); break;
+
+					case "ns":
+					case "namespace": this.ns(v); break;
+					case "requires":
+					case "dependencies": this.dependencies(v); break;
+					case "flags": this.flags(v); break;
+					case "key": this.key(v); break;
+					case "type": this.type(v); break;
+					case "alias": this.alias(v); break;
+					case "callback": this.callback(v); break;
+					case "schema": this.schema(v); break;
+					case "mime": this.mime(v); break;
+					case "url":
+					case "urls": this.urls(v); break;
+
+					default:
+					{
+						throw Error("Unsupported parameter: "+k);
+					}
+				}
+			}
+		}
 	};
     //-----------------------------------------------------------------------------------------------------------------------
     Dependency.ASSIGNABLE = 1;
@@ -708,121 +799,151 @@ window._mix_ = (window._mix_ || "_mix_");
     //-----------------------------------------------------------------------------------------------------------------------
     var counter = 0;
     //-----------------------------------------------------------------------------------------------------------------------
-    Dependency.prototype.build = function () {
-        if (!this._alias_ || !isString(this._alias_)) {
-            throw new Error("Invalid alias: '" + this._alias_ + "'");
-        }
-
-        if (!isArray(this._dependencies_)) {
-            throw new Error("Dependencies must be an array: '" + this._alias_ + "'");
-        }
-
-        var found = 0;
-
-        for (var i = 0, l = this._dependencies_.length; i < l; i++) {
-            var d = this._dependencies_[i];
-
-            var fqn = core.unescapeDependency(d);
-
-            if (!core.isDependency(d) || fqn in registry) {
-                found += 1;
-            }
-            else {
-                this._dependenciesHash_[fqn] = true;
-
-                requiredMap[fqn] = 1 + (requiredMap[fqn] || 0);
-
-                if (core.isResourceDependency(d)) {
-                    var type = core.getResourceType(d);
-
-                    core.declare(d, type, [core.escapeDependency("dep")], function (dep) {
-                        return dep.value;
-                    });
-                }
-            }
-        }
-
-        if (found < l) {
-            requiredList.push(this);
-        }
-
-        return this._ns_;
-    };
-    //-----------------------------------------------------------------------------------------------------------------------
     Dependency.prototype.flags = function (val) {
-        if (val !== undefined) {
-            this._flags_ = 0 | val;
+        if (isNumber(val)) {
+            this._flags |= val;
             return this;
         }
-        return this._flags_;
+        return this._flags;
     };
     Dependency.prototype.alias = function (val) {
         if (isString(val)) {
-            this._alias_ = val;
+            this._alias = val;
             return this;
         }
-        return this._alias_;
+        return this._alias;
     };
     Dependency.prototype.ns = Dependency.prototype.namespace = function (val) {
         if (val !== undefined) {
-            this._ns_ = core.namespace(val);
+            this._ns = core.namespace(val);
             return this;
         }
-        return this._ns_;
+        return this._ns;
     };
     Dependency.prototype.type = function (val) {
         if (isString(val)) {
-            this._type_ = val;
+            this._type = val;
             return this;
         }
-        return this._type_;
+        return this._type;
     };
     Dependency.prototype.key = function (val) {
-        if (val !== undefined) {
-            this._key_ = val;
+        if (isString(val)) {
+			if(~val.search(":")){
+				var idx = val.search(":");
+				this.type(val.substr(0, idx));
+				val = val.substr(idx+1);
+			}
+            this._key = val;
             return this;
         }
-        return this._key_;
+        return this._key;
     };
     Dependency.prototype.mime = function (val) {
         if (isString(val)) {
-            this._mime_ = val;
+            this._mime = val;
             return this;
         }
-        return this._mime_;
+        return this._mime;
     };
-    Dependency.prototype.builder = function (val) {
+    Dependency.prototype.callback = function (val) {
         if (isFunction(val)) {
-            this._builder_ = val;
+            this._callback = val;
             return this;
         }
-        return this._builder_;
+        return this._callback;
     };
     Dependency.prototype.schema = function (val) {
         if (val instanceof Schema) {
-            this._schema_ = val;
+            this._schema = val;
             return this;
         }
-        return this._schema_;
+        return this._schema;
     };
-    Dependency.prototype.url = function () {
-        if (arguments.length > 0) {
-            argsToArray(arguments, this._url_);
-            return this;
-        }
-        return this._url_;
+	Dependency.prototype.url = function(){
+		return this._urls[this._retry];
+	};
+	Dependency.prototype.nextUrl = function(){
+		return this._urls[++this._retry];
+	};
+	Dependency.prototype.urls = function () {
+		if (arguments.length > 0) {
+			argsToArray(arguments, this._urls);
+			return this;
+		}
+        return this._urls;
     };
     Dependency.prototype.requires = Dependency.prototype.dependencies = function () {
         if (arguments.length > 0) {
-            argsToArray(arguments, this._dependencies_);
+            argsToArray(arguments, this._dependencies);
             return this;
         }
-        return this._dependencies_;
+        return this._dependencies;
     };
-    //-----------------------------------------------------------------------------------------------------------------------
+	Object.defineProperties(Dependency.prototype, {
+		value: {
+			get: function(){
+				return this._value;
+			},
+			set: function(v){
+				this._value = v;
+			}
+		},
+		result: {
+			get: function(){
+				return this._result;
+			},
+			set: function(v){
+				this._result = v;
+			}
+		}
+	});
+    //------------------------------------------------------------------------------------------------------------------
+	Dependency.prototype.build = function () {
+		if (!this.alias() || !isString(this.alias())) {
+			throw new Error("Invalid alias: '" + this.alias() + "'");
+		}
+		if (!this.type() || !isString(this.type())) {
+			throw new Error("Invalid type: '" + this.type() + "'");
+		}
+		if (!isArray(this.dependencies())) {
+			throw new Error("Invalid dependencies: '" + this.alias() + "'");
+		}
+
+		var found = 0, dependencies = this.dependencies();
+
+		for (var i = 0, l = dependencies.length; i < l; i++) {
+			var d = dependencies[i];
+
+			var key = core.unescapeDependency(d);
+
+			if (!core.isDependency(d) || key in registry) {
+				found += 1;
+			}
+			else {
+				this._dependenciesHash[key] = true;
+
+				pendingMap[key] = 1 + (pendingMap[key] || 0);
+
+				if (core.isResourceDependency(d)) {
+					var type = core.getResourceType(d);
+
+					core.declare(d, type, [core.escapeDependency("dep")], function (dep) {
+						return dep.value;
+					});
+				}
+			}
+		}
+
+		if (found < l) {
+			pendingList.push(this);
+		}
+
+		return this._ns;
+	};
 	Dependency.prototype.resolve = function()
 	{
-        var fqn = this.toString();
+        var key = this.toString();
 
         if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED))
 		{
@@ -830,18 +951,18 @@ window._mix_ = (window._mix_ || "_mix_");
 			{
 				this.complete();
 
-				if(delete requiredMap[fqn])
+				if(delete pendingMap[key])
 				{
 					var readyList = [], dep;
 
-					for(var i = requiredList.length - 1; i >= 0; i--)
+					for(var i = pendingList.length - 1; i >= 0; i--)
 					{
-						dep = requiredList[i];
+						dep = pendingList[i];
 
-                        if (delete dep._dependenciesHash_[fqn] && !Object.keys(dep._dependenciesHash_).length)
+                        if (delete dep._dependenciesHash[key] && !Object.keys(dep._dependenciesHash).length)
 						{
 							readyList.push(dep);
-							requiredList.splice(i, 1);
+							pendingList.splice(i, 1);
 						}
 					}
 					for(i = 0; i < readyList.length; i++)
@@ -859,27 +980,29 @@ window._mix_ = (window._mix_ || "_mix_");
 		{
 			return;
 		}
+
         this.mark(Dependency.RESOLVED);
 
-        var fqn = this.toString();
-        var args = core.inject(this, this._dependencies_);
+        var key = this.toString();
+
+        var args = core.inject(this, this.dependencies());
 
 		try
 		{
-            var result = this._builder_.apply(null, args);
+            var result = this.callback().apply(null, args);
 
             counter++;
 
-            if (this.is(Dependency.ASSIGNABLE))
+            if (this.is(Dependency.ASSIGNABLE) && this.alias())
 			{
-				registry[fqn] = result;
+				registry[key] = result;
 
-                this._ns_.set(this._alias_, result);
+                this.ns().set(this.alias(), result);
 
                 if(cfg.debug)
 				{
-                    cfg.console.log("%c" + ("      ".substr(0, 6 - counter.toString().length) + counter) + ": %c" + fqn,
-                        cfg.logStyle.replace("COLOR", "red"), cfg.logStyle.replace("COLOR", "green"));
+                    cfg.console.log("%c" + ("      ".substr(0, 6 - counter.toString().length) + counter) + ": %c" + key,
+					cfg.logStyle.replace("COLOR", "red"), cfg.logStyle.replace("COLOR", "green"));
 				}
 			}
 
@@ -887,7 +1010,7 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		catch(e)
 		{
-			cfg.console.error("Unable to resolve definition: " + fqn + ", because of: ");
+			cfg.console.error("Unable to resolve definition: " + key + ", because of: ");
 			cfg.console.log("%c" + (e.stack ? e.stack : e), cfg.logStyle.replace("COLOR", "red"));
 		}
         return this;
@@ -931,7 +1054,7 @@ window._mix_ = (window._mix_ || "_mix_");
                     if (!(src.status == 200 || src.status == 304)) {
                         throw new Error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'");
                     }
-                    this._schema_.injector.call(this._schema_, this, this.value = src.responseText);
+                    this.schema().injector.call(this.schema(), this, this.value = src.responseText);
                 }
             }
             else {
@@ -945,16 +1068,16 @@ window._mix_ = (window._mix_ || "_mix_");
 	Dependency.prototype.load = function()
 	{
 		//Is this dependency loadable?
-        if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED))
-		{
+        if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED)) {
 			this.resolve();
 		}
         else {
-            this._schema_.loader.call(this.schema, this);
+            this.schema().loader.call(this.schema(), this);
         }
 
         return this;
 	};
+	//------------------------------------------------------------------------------------------------------
     Dependency.prototype.is = function (bits) {
         return (this._flags_ & bits) === bits;
     };
@@ -967,7 +1090,7 @@ window._mix_ = (window._mix_ || "_mix_");
         return this;
     };
     Dependency.prototype.toString = function () {
-        return this._key_ || (this._key_ = (this._ns_.alias) ? this._ns_ + "." + this._alias_ : this._alias_);
+        return this._key || (this._key = (this._ns.alias) ? this._ns + "." + this._alias : this._alias);
     };
 
 	//------------------------------------------------------------------------------------------------------
@@ -975,9 +1098,9 @@ window._mix_ = (window._mix_ || "_mix_");
 	//------------------------------------------------------------------------------------------------------
 	setTimeout(function monitorRequirements()
 	{
-		if(monitoredTimes++ < 5 && requiredList.length > 0)
+		if(monitoredTimes++ < 5 && pendingList.length > 0)
 		{
-			cfg.console.log("%cAwaiting dependencies: " + requiredList.join(","), "background-color: red; color: white; font-style: bold;");
+			cfg.console.log("%cAwaiting dependencies: " + pendingList.join(","), "background-color: red; color: white; font-style: bold;");
 			setTimeout(monitorRequirements, 3000);
 		}
 	}, 3000);

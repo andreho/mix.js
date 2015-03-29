@@ -1,5 +1,6 @@
 .*
 *.md
+*.iml
 test
 bower.json
 gruntfile.js

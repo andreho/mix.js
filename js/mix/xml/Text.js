@@ -3,6 +3,7 @@
  */
 mix.declare("mix.xml.Text", function () {
     function Text(value) {
+        this.parent = null;
         this.type = Node.TEXT_NODE;
         this.value = value || "";
     }
