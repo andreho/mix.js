@@ -21,6 +21,8 @@ window._mix_ = (window._mix_ || "_mix_");
 		});
 	}
 	//-UTILS--------------------------------------------------------------------------------------------------
+	function noop(){}
+
 	function isBoolean(o)
 	{
 		return typeof o === "boolean";
@@ -120,15 +122,13 @@ window._mix_ = (window._mix_ || "_mix_");
 		return current;
 	}
 	//------------------------------------------------------------------------------------------------------------------
-	function Schema(o)
-	{
-		if(!(this instanceof Schema))
-		{
+	function Schema(o){
+		if(!(this instanceof Schema)){
 			return new Schema(o);
 		}
 
-		this._urls = []; //Schema.defaultURLProvider; //String, Object or function (d:Dependency):String
-		this._external = false; //Schema.defaultExternal; //Boolean or function (d:Dependency):Boolean
+		this._urls = Schema.default.urls; //String, Object or function (d:Dependency):String
+		this._flags = Schema.default.flags; //int, Object or function (d:Dependency):int
 
 		this._alias = ""; //String, Object or function (d:Dependency):String
 		this._prefix = ""; //String or function (d:Dependency):String
@@ -136,19 +136,16 @@ window._mix_ = (window._mix_ || "_mix_");
 		this._path = "/"; //String or function (d:Dependency):String
 		this._mime = "*/*"; //String or function (d:Dependency):String
 
-		this._loaded = null; //Schema.defaultLoader; //function (d:Dependency):void
-		this._failed = null; //Schema.defaultLoader; //function (d:Dependency):void
+		this._loaded = Schema.default.loaded; //function (d:Dependency):void
+		this._failed = Schema.default.failed; //function (d:Dependency):void
 
-		this._loader = null; //Schema.defaultLoader; //function (d:Dependency):void
-        this._injector = null; //Schema.defaultInjector; //function (d:Dependency, rawData:String):String
-        this._preprocessor = null; //Schema.defaultPreprocessor; //function (d:Dependency, rawData:String):String
+		this._loader = Schema.default.loader; //function (d:Dependency):void
+        this._injector = Schema.default.injector; //function (d:Dependency, rawData:String):String
+        this._preprocessor = Schema.default.preprocessor; //function (d:Dependency, rawData:String):String
 
-		if(isObject(o))
-		{
-			for(var k in o)
-			{
+		if(isObject(o)){
+			for(var k in o){
 				var v = o[k];
-
 				switch (k){
 					case "urls": this.urls(v); break;
 					case "alias": this.alias(v); break;
@@ -172,7 +169,7 @@ window._mix_ = (window._mix_ || "_mix_");
 	//------------------------------------------------------------------------------------------------------------------
 	Schema.prototype.urls = function(val){
 		if(val !== undefined){
-			argsToArray(arguments, this._urls);
+			this._urls = val;
 			return this;
 		}
 		return this._urls;
@@ -184,12 +181,12 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		return this._alias;
 	};
-	Schema.prototype.external = function(val){
-		if(isBoolean(val) || isObject(val) || isFunction(val)){
-			this._external = val;
+	Schema.prototype.flags = function(val){
+		if(isNumber(val) || isObject(val) || isFunction(val)){
+			this._flags = val;
 			return this;
 		}
-		return this._external;
+		return this._flags;
 	};
 	Schema.prototype.path = function(val){
 		if(isString(val) || isFunction(val)){
@@ -256,16 +253,6 @@ window._mix_ = (window._mix_ || "_mix_");
 	};
 	//------------------------------------------------------------------------------------------------------------------
 	Schema.default = {
-		external: function (dep) {
-			var location = window.location;
-			var host = location.protocol + "//" + location.host;
-
-			var retry = dep._retry;
-            if(retry < dep.urls().length){
-				return dep.urls()[retry].search(host) !== 0
-			}
-			return false;
-		},
 		urls: function(dep){
 			var location = window.location;
 			var base = location.href.substring(0,
@@ -273,17 +260,15 @@ window._mix_ = (window._mix_ || "_mix_");
 				(location.port ? location.port.length + 1 : 0) -
 				location.pathname.length - (location.search ? location.search.length : 0));
 
-			var url = base + (location.port? ":" + location.port : "") + "/" + cfg.baseUrl;
+			var url = base + (location.port? ":" + location.port : "") + "/" + coreCfg.baseUrl;
 
 			url += ("/" + (isFunction(this.path()) ? this.path().call(this, dep) : this.path()));
 
 			var alias;
-			if(isFunction(this.alias()))
-			{
+			if(isFunction(this.alias())){
 				alias = this.alias().call(this, dep);
 			}
-			else if(isObject(this.alias()))
-			{
+			else if(isObject(this.alias())){
 				alias = this.alias()[dep.alias()];
 			}
 
@@ -296,24 +281,23 @@ window._mix_ = (window._mix_ || "_mix_");
 		},
 		loader: function(dep){
 
-			if(dep.urls().length)
-			{
+			if(dep.urls().length){
 				throw new Error("Please provide an URL for the definition: " + dep + ", type: " + dep.type());
 			}
 
 			var self = this,
+
 			onLoaded = function(e){
 				dep.flags(Dependency.LOADED);
 				dep.result = e;
-				self.loaded.call(self, dep);
+				self.loaded().call(self, dep);
 			},
 			onFailed = function(e){
 				dep.result = e;
-				self.failed.call(self, dep);
+				self.failed().call(self, dep);
 			};
 
-			if(dep.is(Dependency.EXTERNAL))
-			{
+			if(dep.is(Dependency.EXTERNAL)) {
 				var script = window.document.createElement("script");
 				script.type = dep.mime();
 				script.src = dep.url();
@@ -322,8 +306,7 @@ window._mix_ = (window._mix_ || "_mix_");
 				script.onerror = onFailed;
 				window.document.head.appendChild(script);
 			}
-			else
-			{
+			else {
 				var request = new XMLHttpRequest();
 				request.onload = onLoaded;
 				request.onerror = onFailed;
@@ -331,10 +314,72 @@ window._mix_ = (window._mix_ || "_mix_");
 				request.send();
 			}
 		},
+		loaded: function(dep) {
+			this.mark(Dependency.LOADED);
+
+			var res = dep.result;
+
+			if (res)
+			{
+				if (res.srcElement || res.target) {
+					var src = (res.srcElement || res.target);
+
+					if (src.onload || src.onerror) {
+						src.onload = null;
+						src.onerror = null;
+					}
+
+					//Internal source ...
+					if (src instanceof XMLHttpRequest) {
+						if (!(src.status == 200 || src.status == 304)) {
+							throw new Error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'");
+						}
+						this.schema().injector().call(this.schema(), this, dep.value = src.responseText);
+					}
+				}
+				else {
+					dep.value = res;
+				}
+
+				//In case someone forget to call it in the corresponding injector ...
+				dep.resolve();
+			}
+		},
+		failed: function(dep) {
+			var res = dep.result;
+			if(res && (res.srcElement || res.target)){
+				var src = (res.srcElement || res.target);
+
+				if(src.onload || src.onerror){
+					src.onload = null;
+					src.onerror = null;
+				}
+			}
+			coreCfg.console.error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'", this, res);
+		},
 		injector: function(dep, raw){
 			dep.resolve();
 		},
 		preprocessor: function(dep){
+		},
+		flags: function(dep){
+			var flags = 0;
+
+			var location = window.location;
+			var host = location.protocol + "//" + location.host;
+			var retry = dep._retry;
+
+			if(retry < dep.urls().length && dep.urls()[retry].search(host) !== 0){
+				flags |= Dependency.EXTERNAL;
+			}
+
+			if(dep.type() != "module"){
+				flags |= Dependency.LOADABLE;
+			}
+
+			flags |= Dependency.ASSIGNABLE;
+
+			return flags;
 		}
 	};
 	//------------------------------------------------------------------------------------------------------------------
@@ -342,14 +387,15 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
 		dep.urls(isFunction(this.urls()) ? this.urls().call(this, dep) : isObject(this.urls())? this.urls()[dep] : this.urls());
 		dep.mime(isFunction(this.mime()) ? this.mime().call(this, dep) : isObject(this.mime()) ? this.mime()[dep] || this.mime()["default"] : this.mime());
-		dep.external(isFunction(this.external()) ? this.external().call(this, dep) : isObject(this.external()) ? this.external()[dep] : this.external());
+		//dep.external(isFunction(this.external()) ? this.external().call(this, dep) : isObject(this.external()) ? this.external()[dep] : this.external());
+		dep.flags(isFunction(this.flags()) ? this.flags().call(this, dep) : isObject(this.flags()) ? this.external()[dep] : this.flags());
 		return this;
 	};
 	//------------------------------------------------------------------------------------------------------------------
 	var context = {
 		loaded: "LOADED"
 	};
-	var cfg = {
+	var coreCfg = {
 		debug: true,
 		baseUrl: "/app",
 		logStyle: "color: COLOR; font-style: bold;",
@@ -357,14 +403,14 @@ window._mix_ = (window._mix_ || "_mix_");
 		schemas: {},
 		internal: {},
 		"default":{
-			type: "lib",
+			type: "module",
 			unknownType: ""
 		}
 	};
 	//------------------------------------------------------------------------------------------------------------------
 	var config = {
 		mix: {
-			core: cfg
+			core: coreCfg
 		}
 	};
 	//------------------------------------------------------------------------------------------------------------------
@@ -374,6 +420,7 @@ window._mix_ = (window._mix_ || "_mix_");
 	var pendingList = [];
 	var nsRegExp = /[a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*/;
 	//------------------------------------------------------------------------------------------------------------------
+
 	function Core()
 	{
 		Object.defineProperty(this, "_config_", {value: config});
@@ -466,108 +513,75 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		return this;
 	};
-	Core.prototype.provide = function(key, dependencies, callback)
+
+	Core.prototype.resource = function(o)
 	{
-		return this.declare(key, "provided", dependencies, callback);
+		return this.declare(o);
 	};
+
+	Core.prototype.provide = function(key, value)
+	{
+		return this.declare({
+			key: key,
+			type: "provided",
+			loadable: false,
+			assignable: true,
+			callback: function providedValue() {
+				return value;
+			}
+		}).build();
+	};
+
 	Core.prototype.declare = function(key, type, dependencies, callback)
 	{
-		switch (arguments.length)
-		{
-			case 1: {
-				if(isObject(key)){
-					return new Dependency(key);
-				}
-			}
-				break;
-			case 2: {
-				if(isString(key) && isFunction(type)){
-					return new Dependency({
-						key: key,
-						type: cfg.default.type,
-						callback: type
-					});
-				}
-				else if(isArray(key) && isFunction(type)){
-					return new Dependency({
-						assignable: false,
-						key: cfg.default.unknownType,
-						type: cfg.default.type,
-						callback: type
-					});
-				}
-			}
-				break;
-			case 3: {
-				if(isString(key) && isArray(type) && isFunction(dependencies)){
-					return new Dependency({
-						key: key,
-						type: cfg.default.type,
-						dependencies: type,
-						callback: dependencies
-					});
-				}
-			}
-				break;
-			case 4: {
-				if(isString(key) && isString(type) && isArray(dependencies) && isFunction(callback)){
-					return new Dependency({
-						key: key,
-						type: type,
-						dependencies: dependencies,
-						callback: callback
-					});
-				}
-			}
-				break;
+		if(arguments.length === 0){
+			return new Dependency();
+		}
+		if(isObject(key)){
+			return new Dependency(key);
 		}
 
-		var assignable = "extend" !== type;
-		if(assignable && (key in registry))
-		{
-			throw new Error("Given definition with key '" + key + "' was already defined.");
-		}
-		if(callback === undefined)
-		{
-			if(isFunction(type))
-			{
-				callback = type;
-				dependencies = [];
-				type = "declaration";
-			}
-			else if(isArray(type))
-			{
-				callback = dependencies;
-				dependencies = type;
-				type = "declaration";
-			}
-			else if(type === "provided")
-			{
-				var provided = dependencies;
-				callback = function providedValue()
-				{
-					return provided;
+		var params = {
+			loadable: true,
+			assignable: true,
+			key: key,
+			type: (function(){
+				if(isString(type)){
+					return type;
 				}
-				dependencies = [];
-			}
-			else if(isFunction(dependencies))
-			{
-				callback = dependencies;
-				dependencies = [];
-			}
+				return coreCfg.default.type;
+			})(),
+			dependencies: (function(){
+				if(isArray(dependencies)){
+					return dependencies;
+				}
+				if(isArray(type)){
+					return type;
+				}
+				return [];
+			})(),
+			callback: (function(){
+				if(isFunction(callback)){
+					return callback;
+				}
+				if(isFunction(dependencies)){
+					return dependencies;
+				}
+				if(isFunction(type)){
+					return type;
+				}
+				return noop;
+			})()
+		};
+
+		var d = new Dependency(params);
+
+		if(d.is(Dependency.ASSIGNABLE) && d.key in registry)
+		{
+			throw new Error("Given dependency with key '" + key + "' was already resolved.");
 		}
 
-        var dotIdx = key.lastIndexOf("."), ns;
-
-        if (dotIdx > -1) {
-            ns = dotIdx > -1 ? key.substr(0, dotIdx) : key;
-            key = key.substr(dotIdx + 1);
-        }
-        else {
-            ns = "";
-        }
-
-		return this.dependency(ns).alias(key).assignable(assignable).type(type).dependencies(dependencies).build(callback);
+		return d.build();
 	};
 	Core.prototype.extend = function(key, dependencies, builder)
 	{
@@ -583,38 +597,12 @@ window._mix_ = (window._mix_ || "_mix_");
 			builder = dependencies;
 			dependencies = [key];
 		}
-		return this.declare(key, "extend", dependencies, builder);
+
+		return this.declare({key: key, type: "extend", assignable: false, dependencies: dependencies, callback: builder});
 	};
 	Core.prototype.plugin = function(key, dependencies, builder)
 	{
 		return this.declare(key, "plugin", dependencies, builder);
-	};
-	Core.prototype.dependency = function(o)
-	{
-
-
-		if(!arguments.length)
-		{
-			return new Dependency().namespace(o);
-		}
-		else if(isString(o))
-		{
-			return new Resource(this.namespace(o));
-		}
-		else if(isObject(o))
-		{
-            var resource = new Resource(this.namespace(o.ns || o.namespace || this))
-                .alias(o.alias)
-                .type(o.type)
-                .assignable(isBoolean(o.assignable) ? o.assignable : true)
-                .dependencies((o.dependencies || o.requires || []));
-			if(isFunction(o.builder))
-			{
-				return resource.build(o.builder);
-			}
-			return resource;
-		}
-		throw new Error("Unsupported parameter type: '" + o + "', please provide either a string or a hash.");
 	};
     Core.prototype.inject = function (dep, dependencies)
 	{
@@ -670,8 +658,7 @@ window._mix_ = (window._mix_ || "_mix_");
 		return "";
 	};
 	//------------------------------------------------------------------------------------------------------
-	function Namespace(alias, parent)
-	{
+	function Namespace(alias, parent) {
 		var key = parent && parent.alias ? parent + "." + alias : alias;
 		if(key in namespaces)
 		{
@@ -690,32 +677,26 @@ window._mix_ = (window._mix_ || "_mix_");
     Namespace.prototype.namespace = Core.prototype.namespace;
 	Namespace.prototype.resource = Core.prototype.resource;
 	Namespace.prototype.plugin = Core.prototype.plugin;
-	Namespace.prototype.config = function(a, b)
-	{
+	Namespace.prototype.config = function(a, b){
 		return core.config(a, b);
 	};
-	Namespace.prototype.context = function(context)
-	{
+	Namespace.prototype.context = function(context){
 		core.context(context);
 		return this;
 	};
-	Namespace.prototype.provide = function(key, dependencies, builder)
-	{
-		core.provide(key, dependencies, builder);
+	Namespace.prototype.provide = function(key, value){
+		core.provide(key, value);
 		return this;
 	};
-	Namespace.prototype.declare = function(key, type, dependencies, builder)
-	{
+	Namespace.prototype.declare = function(key, type, dependencies, builder){
 		core.declare(key, type, dependencies, builder);
 		return this;
 	};
-	Namespace.prototype.extend = function(key, dependencies, builder)
-	{
+	Namespace.prototype.extend = function(key, dependencies, builder){
 		core.extend(key, dependencies, builder);
 		return this;
 	};
-	Namespace.prototype.toString = function toString()
-	{
+	Namespace.prototype.toString = function toString(){
 		var arr = [];
 		var current = this;
 		while(current.parent)
@@ -729,21 +710,20 @@ window._mix_ = (window._mix_ || "_mix_");
 		return arr.reverse().join(".");
 	};
     //-----------------------------------------------------------------------------------------------------------------------
-    function Dependency(o)
-	{
+    function Dependency(o){
 		if(!(this instanceof Dependency)){
 			return new Dependency(o);
 		}
 
         this._flags = 0;
 
-        this._ns = null;
+        this._ns = core;
         this._type = "";
         this._alias = "";
 
         this._key = ""; //(ns.alias) ? ns + "." + alias : alias;
 
-		this._callback = undefined;
+		this._callback = noop;
 
         this._dependencies = [];
         this._dependenciesHash = {};
@@ -756,33 +736,36 @@ window._mix_ = (window._mix_ || "_mix_");
         this._mime = "*/*";
         this._urls = [];
 
-		if(isObject(o))
-		{
-			for(var k in o)
-			{
+		if(isObject(o)){
+			for(var k in o){
+
 				var v = o[k];
-				switch (k)
-				{
-					case "assignable": this.flags(Dependency.ASSIGNABLE); break;
-					case "loadable": this.flags(Dependency.LOADABLE); break;
-					case "external": this.flags(Dependency.EXTERNAL); break;
+
+				switch (k){
+					case "assignable": this.mark(v? Dependency.ASSIGNABLE : 0); break;
+					case "loadable": this.mark(v? Dependency.LOADABLE : 0); break;
+					case "external": this.mark(v? Dependency.EXTERNAL : 0); break;
+
+					case "key": this.key(v); break;
+
+					case "alias": this.alias(v); break;
 
 					case "ns":
 					case "namespace": this.ns(v); break;
+
 					case "requires":
 					case "dependencies": this.dependencies(v); break;
-					case "flags": this.flags(v); break;
-					case "key": this.key(v); break;
+
 					case "type": this.type(v); break;
-					case "alias": this.alias(v); break;
+					case "flags": this.flags(v); break;
 					case "callback": this.callback(v); break;
 					case "schema": this.schema(v); break;
 					case "mime": this.mime(v); break;
+
 					case "url":
 					case "urls": this.urls(v); break;
 
-					default:
-					{
+					default:{
 						throw Error("Unsupported parameter: "+k);
 					}
 				}
@@ -797,11 +780,9 @@ window._mix_ = (window._mix_ || "_mix_");
     Dependency.EXTERNAL = 16;
     Dependency.PROCESSED = 32;
     //-----------------------------------------------------------------------------------------------------------------------
-    var counter = 0;
-    //-----------------------------------------------------------------------------------------------------------------------
     Dependency.prototype.flags = function (val) {
         if (isNumber(val)) {
-            this._flags |= val;
+            this._flags = val;
             return this;
         }
         return this._flags;
@@ -829,10 +810,17 @@ window._mix_ = (window._mix_ || "_mix_");
     };
     Dependency.prototype.key = function (val) {
         if (isString(val)) {
-			if(~val.search(":")){
-				var idx = val.search(":");
+			//Extract type
+			var idx = val.indexOf(':');
+			if(~idx){ //NOT(-1) => ZERO
 				this.type(val.substr(0, idx));
 				val = val.substr(idx+1);
+			}
+			//Extract namespace and alias
+			idx = val.lastIndexOf('.');
+			if(~idx){
+				this.ns(val.substr(0, idx));
+				this.alias(val.substr(idx+1));
 			}
             this._key = val;
             return this;
@@ -858,9 +846,16 @@ window._mix_ = (window._mix_ || "_mix_");
             this._schema = val;
             return this;
         }
+		else if(isString(val)) {
+			return this.schema(coreCfg.schemas[val]);
+		}
         return this._schema;
     };
-	Dependency.prototype.url = function(){
+	Dependency.prototype.url = function(val){
+		if(isString(val)){
+			this._urls[this._retry] = val;
+			return this;
+		}
 		return this._urls[this._retry];
 	};
 	Dependency.prototype.nextUrl = function(){
@@ -900,14 +895,23 @@ window._mix_ = (window._mix_ || "_mix_");
 	});
     //------------------------------------------------------------------------------------------------------------------
 	Dependency.prototype.build = function () {
+		if (!this.ns()) {
+			throw new Error("Invalid namespace: '" + this.ns() + "' defined by: "+this);
+		}
 		if (!this.alias() || !isString(this.alias())) {
-			throw new Error("Invalid alias: '" + this.alias() + "'");
+			throw new Error("Invalid alias: '" + this.alias() + "' defined by: "+this);
 		}
 		if (!this.type() || !isString(this.type())) {
-			throw new Error("Invalid type: '" + this.type() + "'");
+			throw new Error("Invalid type: '" + this.type() + "' defined by: "+this);
 		}
 		if (!isArray(this.dependencies())) {
-			throw new Error("Invalid dependencies: '" + this.alias() + "'");
+			throw new Error("Invalid dependencies: '" + this.alias() + "' defined by: "+this);
+		}
+		if (!isFunction(this.callback())) {
+			throw new Error("Invalid callback: '" + this.callback() + "' defined by: "+this);
+		}
+		if(!this.schema()){
+			this.schema(this.type());
 		}
 
 		var found = 0, dependencies = this.dependencies();
@@ -938,6 +942,9 @@ window._mix_ = (window._mix_ || "_mix_");
 		if (found < l) {
 			pendingList.push(this);
 		}
+		else {
+			this.load();
+		}
 
 		return this._ns;
 	};
@@ -945,28 +952,22 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
         var key = this.toString();
 
-        if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED))
-		{
-            if (!this.is(Dependency.RESOLVED))
-			{
+        if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED)){
+            if (!this.is(Dependency.RESOLVED)){
 				this.complete();
 
-				if(delete pendingMap[key])
-				{
+				if(delete pendingMap[key]){
 					var readyList = [], dep;
 
-					for(var i = pendingList.length - 1; i >= 0; i--)
-					{
+					for(var i = pendingList.length - 1; i >= 0; i--){
 						dep = pendingList[i];
 
-                        if (delete dep._dependenciesHash[key] && !Object.keys(dep._dependenciesHash).length)
-						{
+                        if (delete dep._dependenciesHash[key] && !Object.keys(dep._dependenciesHash).length){
 							readyList.push(dep);
 							pendingList.splice(i, 1);
 						}
 					}
-					for(i = 0; i < readyList.length; i++)
-					{
+					for(i = 0; i < readyList.length; i++){
 						(dep = readyList[i]).load();
 					}
 				}
@@ -974,10 +975,12 @@ window._mix_ = (window._mix_ || "_mix_");
 		}
 		return this;
 	};
+	//-----------------------------------------------------------------------------------------------------------------------
+	var loadedDependenciesCounter = 0;
+	//-----------------------------------------------------------------------------------------------------------------------
 	Dependency.prototype.complete = function()
 	{
-        if (this.is(Dependency.RESOLVED))
-		{
+        if (this.is(Dependency.RESOLVED)){
 			return;
 		}
 
@@ -991,102 +994,53 @@ window._mix_ = (window._mix_ || "_mix_");
 		{
             var result = this.callback().apply(null, args);
 
-            counter++;
+            loadedDependenciesCounter++;
 
-            if (this.is(Dependency.ASSIGNABLE) && this.alias())
-			{
+            if (this.is(Dependency.ASSIGNABLE) && this.alias()){
 				registry[key] = result;
 
                 this.ns().set(this.alias(), result);
 
-                if(cfg.debug)
-				{
-                    cfg.console.log("%c" + ("      ".substr(0, 6 - counter.toString().length) + counter) + ": %c" + key,
-					cfg.logStyle.replace("COLOR", "red"), cfg.logStyle.replace("COLOR", "green"));
+                if(coreCfg.debug){
+                    coreCfg.console.log("%c" + ("      ".substr(0, 6 - loadedDependenciesCounter.toString().length) + loadedDependenciesCounter) + ": %c" + key,
+					coreCfg.logStyle.replace("COLOR", "red"), coreCfg.logStyle.replace("COLOR", "green"));
 				}
 			}
 
             this.value = this.result = null;
 		}
-		catch(e)
-		{
-			cfg.console.error("Unable to resolve definition: " + key + ", because of: ");
-			cfg.console.log("%c" + (e.stack ? e.stack : e), cfg.logStyle.replace("COLOR", "red"));
+		catch(e){
+			coreCfg.console.error("Unable to resolve definition: " + key + ", because of: ");
+			coreCfg.console.log("%c" + (e.stack ? e.stack : e), coreCfg.logStyle.replace("COLOR", "red"));
 		}
         return this;
 	};
-	Dependency.prototype.handleFailure = function(res)
-	{
-		if(res && (res.srcElement || res.target))
-		{
-			var src = (res.srcElement || res.target);
-
-            if(src.onload || src.onerror)
-			{
-				src.onload = null;
-				src.onerror = null;
-			}
-		}
-		cfg.console.error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'", this, res);
-	};
-	/**
-	 * Called only for loadable dependencies
-	 * @param res
-	 */
-	Dependency.prototype.handleResult = function(res)
-	{
-        this.mark(Dependency.LOADED);
-
-        if (res)
-		{
-            this.result = res;
-
-            if (res.srcElement || res.target) {
-                var src = (res.srcElement || res.target);
-
-                if (src.onload || src.onerror) {
-                    src.onload = null;
-                    src.onerror = null;
-                }
-
-                //Internal source ...
-                if (src instanceof XMLHttpRequest) {
-                    if (!(src.status == 200 || src.status == 304)) {
-                        throw new Error("Unable to load following dependency: '" + this + "' from: '" + this.url + "'");
-                    }
-                    this.schema().injector.call(this.schema(), this, this.value = src.responseText);
-                }
-            }
-            else {
-                this.value = res;
-            }
-
-            //In case someone forget to call it in the corresponding injector ...
-			this.resolve();
-		}
-	};
 	Dependency.prototype.load = function()
 	{
+		if(this.schema()){
+			this.schema().setup(this);
+		}
+
 		//Is this dependency loadable?
         if (!this.is(Dependency.LOADABLE) || this.is(Dependency.LOADED)) {
 			this.resolve();
 		}
         else {
-            this.schema().loader.call(this.schema(), this);
+            this.schema().loader().call(this.schema(), this);
         }
 
         return this;
 	};
 	//------------------------------------------------------------------------------------------------------
     Dependency.prototype.is = function (bits) {
-        return (this._flags_ & bits) === bits;
+        return (this._flags & bits) === bits;
     };
     Dependency.prototype.mark = function (bits) {
-        this._flags_ |= bits;
+        this._flags |= bits;
         return this;
     };
     Dependency.prototype.unmark = function (bits) {
-        this._flags_ &= ~bits;
+        this._flags &= ~bits;
         return this;
     };
     Dependency.prototype.toString = function () {
@@ -1100,7 +1054,7 @@ window._mix_ = (window._mix_ || "_mix_");
 	{
 		if(monitoredTimes++ < 5 && pendingList.length > 0)
 		{
-			cfg.console.log("%cAwaiting dependencies: " + pendingList.join(","), "background-color: red; color: white; font-style: bold;");
+			coreCfg.console.log("%cAwaiting dependencies: " + pendingList.join(","), "background-color: red; color: white; font-style: bold;");
 			setTimeout(monitorRequirements, 3000);
 		}
 	}, 3000);
@@ -1108,7 +1062,30 @@ window._mix_ = (window._mix_ || "_mix_");
 	var oldMixCore = target[mixCoreKey], oldMixNs = target[mixNsKey];
 	var core = target[mixCoreKey] = new Core();
 	var mix = target[mixNsKey] = core.namespace("mix");
+	//------------------------------------------------------------------------------------------------------
 	mix.provide("mix.Schema", Schema);
 	//------------------------------------------------------------------------------------------------------
+	mix.config("mix.core", {
+		baseUrl: "/mix.js/app",
+		schemas: {
+			module: mix.Schema({
+				mime: {
+					"default": "text/javascript"
+				},
+				injector: function(dep, src)
+				{
+					"use strict";
+					var script = window.document.createElement("script");
+					script.type = dep.mime;
+					script.setAttribute("data-key", dep.key);
+					script.textContent = src;
+					window.document.head.appendChild(script);
+					dep.resolve();
+				}
+			})
+		}
+	});
+	//------------------------------------------------------------------------------------------------------
+
 })(window, _mix_, "mix");
 //-----------------------------------------------------------------------------------------------------------------------

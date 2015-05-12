@@ -5,7 +5,7 @@ mix.config("mix.core", {
     baseUrl: "/mix.js/app",
 	schemas: {
 		external: mix.Schema({
-			url: {
+			urls: {
 				jQuery: "http://code.jquery.com/jquery-2.1.3.min.js"
 			},
 			mime: {
@@ -46,6 +46,7 @@ mix.config("mix.core", {
         })
 	}
 });
+/*
 _mix_.resource().alias("test_lib").type("library").requires("jQuery", "test_lib2").build(function()
 {
 	"use strict";
@@ -89,4 +90,4 @@ _mix_.resource().alias("test_lib").type("library").requires("jQuery", "test_lib2
 {
 	"use strict";
 	return "bla2";
-});
+});*/
