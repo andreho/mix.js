@@ -1,17 +1,8 @@
 /**
  * Created by a.hofmann on 13.05.2015.
  */
-(function (target) {
+(function (target, rootNs) {
     "use strict";
-
-    //-Little Polyfill from MDN-------------------------------------------------------------------------------
-    if (RegExp.prototype.flags === undefined) {
-        Object.defineProperty(RegExp.prototype, 'flags', {
-            configurable: true, get: function () {
-                return this.toString().match(/[gimuy]*$/)[0];
-            }
-        });
-    }
 
     //-UTILS--------------------------------------------------------------------------------------------------
     function noop() {
@@ -71,8 +62,9 @@
     }
 
     //------------------------------------------------------------------------------------------------------
-    var registry = {}, pending = {}, schemas = [];
+    var registry = {}, namespaces = {}, pending = {}, schemas = [];
     //------------------------------------------------------------------------------------------------------
+
     /**
      * @param alias
      * @param parent
@@ -86,7 +78,7 @@
         if (!isString(alias) || (!parent && alias.length)) {
             throw new Error("Invalid alias: '" + alias + "'");
         }
-        property(this, "alias", alias);
+        property(this, "alias", alias || '');
         property(this, "elements", {});
         property(this, "namespaces", {});
         if (parent instanceof Namespace) {
@@ -96,9 +88,9 @@
 
     /**
      * @param ns
-     * @returns {*}
+     * @returns {Namespace}
      */
-    Namespace.prototype.namespace = function namespace(ns) {
+    Namespace.prototype.namespace = function (ns) {
         if (ns instanceof Namespace) {
             return ns;
         }
@@ -111,6 +103,7 @@
             if (subNs) {
                 if (!current.hasNamespace(subNs)) {
                     current = new Namespace(subNs, current);
+                    namespaces[current] = current;
                 }
                 else {
                     current = current.namespaces[subNs];
@@ -124,7 +117,7 @@
      * @param value
      * @param opts
      */
-    Namespace.prototype.element = function element(alias, value, opts) {
+    Namespace.prototype.element = function (alias, value, opts) {
         property(this.elements, alias, value, opts || {enumerable: true, configurable: true});
         var key = (!this.alias ? '' : this + '.') + alias;
         registry[key] = value;
@@ -133,20 +126,20 @@
      * @param ns
      * @returns {boolean}
      */
-    Namespace.prototype.hasNamespace = function hasNamespace(ns) {
+    Namespace.prototype.hasNamespace = function (ns) {
         return (ns in this.namespaces);
     }
     /**
      * @param alias
      * @returns {boolean}
      */
-    Namespace.prototype.hasElement = function hasElement(alias) {
+    Namespace.prototype.hasElement = function (alias) {
         return (alias in this.elements);
     }
     /**
      * @returns {Namespace}
      */
-    Namespace.prototype.root = function root() {
+    Namespace.prototype.root = function () {
         var current = this;
         while (current) {
             if (!current.parent) {
@@ -160,7 +153,7 @@
      * @param def
      * @returns {Namespace}
      */
-    Namespace.prototype.schema = function schema(def) {
+    Namespace.prototype.schema = function (def) {
         Schema(def);
         return this;
     };
@@ -222,7 +215,7 @@
 
             return url;
         },
-        loader: function (res) {
+        loader: function (res, success, failure) {
             if (res.state == 'pending' || res.state == 'injected' || res.state == 'resolved') {
                 return;
             }
@@ -244,21 +237,27 @@
             res.url = this.url.call(this, res);
 
             var req = new XMLHttpRequest();
-            req.onload = this.onLoaded;
-            req.onerror = this.onFailed;
+            req.onload = loaded;
+            req.onerror = failed;
             req.open("GET", res.url, true);
             req.send();
         },
-        injector: function (res) {
+        injector: function (res, success, failure) {
             var script = window.document.createElement("script");
 
             script.setAttribute("data-id", res.id);
             script.type = res.schema.mime;
             script.textContent = res.value;
 
+            script.onload = function(e){
+                script.onload = script.onerror = null;
+                success(res);
+            };
+            script.onerror = function(e){
+                script.onload = script.onerror = null;
+                failure(res);
+            };
             window.document.head.appendChild(script);
-
-            res.state = 'injected';
         },
         onLoaded: function (res) {
             var e = res.result;
@@ -276,12 +275,17 @@
                             throw new Error("Unable to load following resource: '" + res.id + "' from: '" + res.url + "'");
                         }
                         res.value = src.responseText;
-                        this.injector.call(this, res);
+
+                        this.injector.call(this, res,
+                            function (r){
+                                r.state = 'injected';
+                                r.result = undefined;
+                                r.resolve();
+                        },  function (r){
+                                r.state = 'failed';
+                        });
                     }
                 }
-                res.result = undefined;
-                this.injector.call(this, res);
-                res.resolve();
             }
         },
         onFailed: function (res) {
@@ -310,18 +314,38 @@
         return schemas;
     };
     //------------------------------------------------------------------------------------------------------
+    function extract(id){
+        var val = {id: id, alias: '', type: '', namespace: null};
+
+        var idx = id.indexOf(':');
+        if (~idx) { //NOT(-1) => ZERO
+            val.type = id.substr(0, idx);
+            id = id.substr(idx + 1);
+        }
+        //Extract namespace and alias
+        idx = id.lastIndexOf('.');
+        if (~idx) {
+            val.alias = id.substr(idx + 1);
+            val.namespace = id.substr(0, idx);
+            val.namespace = namespace(val.namespace);
+        }
+        val.id = id;
+        return val;
+    }
+    //------------------------------------------------------------------------------------------------------
     function Resource(o) {
         if (!(this instanceof Resource)) {
             return new Resource(o);
         }
-        o = o || {};
+
+        o = isString(o)? {id: o} : isObject(o)? o : {};
 
         var id = o.id || '';
         this.alias = o.alias || '';
         this.namespace = o.namespace || o.ns || '';
         this.dependencies = o.dependencies || o.requires || [];
         this.dependenciesHash = {};
-        this.callback = o.callback || noop;
+        this.factory = o.factory || noop;
 
         this.url = o.url || '';
         this.type = o.type || '';
@@ -335,53 +359,52 @@
         this.waiting = [];
         this.attempt = 0;
 
-        var idx = id.indexOf(':');
-        if (~idx) { //NOT(-1) => ZERO
-            this.type = this.type || id.substr(0, idx);
-            id = id.substr(idx + 1);
-        }
-        //Extract namespace and alias
-        idx = id.lastIndexOf('.');
-        if (~idx) {
-            this.alias = this.alias || id.substr(idx + 1);
-            this.namespace = this.namespace || id.substr(0, idx);
-        }
-        this.id = id;
+        var info = extract(id);
+
+        this.id = info.id;
+        this.type = info.type || this.type;
+        this.alias = info.alias || this.alias;
+        this.namespace = info.namespace || this.namespace;
     };
     /**
      * @returns {boolean}
      */
-    Resource.prototype.load = function load() {
+    Resource.prototype.load = function () {
         this.schema = findSchema(this, this.schema || this.type);
         if (this.schema) {
+
             this.result = undefined;
 
-            if (!this.attempt) {
-                var found = 0, deps = this.dependencies;
+            var found = 0, deps = this.dependencies;
 
-                for (var i = 0; i < deps.length; i++) {
-                    var res = Resource(deps[i]), id = res.id;
-                    if (id in registry) {
-                        found++;
-                    }
-                    else {
-                        pending[id] = res = pending[id] || res;
-                        res.waiting.push(this);
-                        res.load();
-                    }
+            for (var i = 0; i < deps.length; i++) {
+
+                var res = Resource(deps[i]), id = res.id;
+
+                if (id in registry) {
+                    found++;
+                }
+                else {
+                    pending[id] = res = pending[id] || res;
+                    res.waiting.push(this);
+                    res.load();
                 }
             }
-
-            this.attempt++;
-            this.state = 'pending';
-            this.schema.loader.call(this.schema, this);
+            if(found < deps.length){
+                this.attempt++;
+                this.state = 'pending';
+                this.schema.loader.call(this.schema, this);
+            }
+            else{
+                this.resolve();
+            }
         }
         return this.schema != null;
     };
     /**
      * @returns {Array}
      */
-    Resource.prototype.inject = function inject() {
+    Resource.prototype.inject = function () {
         var args = [], deps = this.dependencies;
         for (var i = 0; i < deps.length; i++) {
             var d = deps[i]; //TODO escape not injectable
@@ -396,14 +419,13 @@
     };
     /**
      */
-    Resource.prototype.create = function create() {
-        var value = this.callback.apply(null, inject());
-        this.namespace.element(this.alias, value);
+    Resource.prototype.create = function () {
+        return this.factory.apply(null, this.inject());
     };
     /**
      */
-    Resource.prototype.resolve = function resolve() {
-        if (this.state != 'injected') {
+    Resource.prototype.resolve = function () {
+        if (this.state == 'resolved') {
             return;
         }
         if (length(this.dependenciesHash)) {
@@ -411,15 +433,13 @@
         }
         this.state = 'resolved';
 
-        if (this.id in pending) {
-            delete pending[this.id];
-            this.create();
-        }
+        provide(this, this.create());
+
         this.release();
     };
     /**
      */
-    Resource.prototype.release = function release() {
+    Resource.prototype.release = function () {
         var waiting = this.waiting;
         outer:
             for (var i = waiting.length - 1; i >= 0; i--) {
@@ -459,24 +479,63 @@
 
     //------------------------------------------------------------------------------------------------------
 
-    target.namespace = function namespace(alias) {
-
-    };
-
-    target.provide = function provide(id, value) {
-
-        if (id in pending) {
-            pending[key].resolve();
-        }
-    };
-
-    target.define = function define(id, dependencies, callback) {
-
-    };
-
-    target.require = function require(id) {
-
-    };
+    var root = new Namespace('', null);
 
     //------------------------------------------------------------------------------------------------------
-})(window);
+
+    function namespace(ns) {
+        return root.namespace(ns);
+    };
+    function provide(id, value) {
+        if(!isString(id) || value === undefined){
+            throw new Error('Invalid parameters: ('+id+','+value+')');
+        }
+        var info = extract(id), alias = info.alias, ns = info.namespace;
+        ns.element(alias, value);
+        //use cleaned ID
+        id = info.id;
+
+        if (id in pending) {
+            var res = pending[id];
+            delete pending[id];
+
+            res.resolve();
+        }
+    };
+    function define(id, dependencies, factory) {
+        var a = id, b = dependencies, c = factory;
+
+        if(isArray(id) && isFunction(dependencies)){
+            a = '';
+            b = id;
+            c = dependencies;
+        }
+        else if(isString(id) && isFunction(dependencies)){
+            a = id;
+            b = [];
+            c = dependencies;
+        }
+
+        if(isString(a) && isArray(b) && isFunction(c)){
+            var res = new Resource({id: a, dependencies: b, factory: c}).load();
+            if(!res.schema){
+                console.warn("Unable to find a compatible schema for: '"+a+"'");
+            }
+        }
+        else{
+            throw new Error('Invalid parameters: ('+id+','+dependencies+','+factory+')');
+        }
+        return target;
+    };
+    function require(id) {
+
+    };
+    //------------------------------------------------------------------------------------------------------
+    target[rootNs] = root;
+    target.namespace = namespace;
+    target.provide = provide;
+    target.require = require;
+    target.define = define;
+
+    //------------------------------------------------------------------------------------------------------
+})(window, 'mix');
