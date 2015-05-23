@@ -1,7 +1,8 @@
 /**
  * Created by A.Hofmann on 04.03.2015.
  */
-mix.declare("mix.Constants", function()
+//mix.declare
+define("mix.Constants", function()
 {
 	"use strict";
 	var ARGS_CONSTRUCTOR = arguments.constructor;

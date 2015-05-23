@@ -1,7 +1,8 @@
 /**
  * Created by A.Hofmann on 23.02.2015.
  */
-mix.declare("mix.Utils", ["mix.Constants"], function(Constants)
+//mix.declare
+define("mix.Utils", ["mix.Constants"], function(Constants)
 {
 	"use strict";
 	var iterableSymbol = (window.Symbol && (typeof window.Symbol.iterator) === "symbol") ? window.Symbol.iterator : "@@iterator";
